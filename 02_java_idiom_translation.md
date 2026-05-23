@@ -26,9 +26,11 @@ Goal: take the Java instincts you already have (OOP, `equals`/`hashCode`, collec
 - [Enum](#enum)
 - [Slots](#slots)
 - [Mutability](#mutability)
+- [Immutable objects](#immutable-objects)
 - [Class vs instance attributes](#class-vs-instance-attributes)
 - [MRO](#mro)
 - [Init subclass](#init-subclass)
+- [Singleton](#singleton)
 - [Key Takeaways](#key-takeaways)
 
 ---
@@ -708,6 +710,60 @@ def add_item(item, items=None):
 
 Same trap appears with dataclass defaults — see [`field(default_factory=...)`](#dataclass).
 
+## Immutable objects
+
+Java reaches for `final` fields, `record`, or libraries like Immutables / AutoValue. Python has several options, ordered from most to least common:
+
+**1. `@dataclass(frozen=True)`** — the default answer for value objects.
+
+```python
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class Point:
+    x: int
+    y: int
+
+p = Point(1, 2)
+# p.x = 99   # FrozenInstanceError
+```
+
+Auto-generates `__init__`/`__repr__`/`__eq__`/`__hash__`. Already covered under [Dataclass](#dataclass).
+
+**2. `typing.NamedTuple`** — tuple-backed, immutable, lightweight. Good when you want tuple unpacking too:
+
+```python
+from typing import NamedTuple
+
+class Point(NamedTuple):
+    x: int
+    y: int
+
+p = Point(1, 2)
+print(p.x, p.y)       # >>> 1 2
+x, y = p              # tuple unpacks
+# p.x = 99            # AttributeError
+```
+
+`NamedTuple` instances are real tuples — they compare structurally, unpack, work as dict keys, and use less memory than a regular class. Use them when "immutable record + tuple semantics" is the right shape.
+
+**3. `tuple` / `frozenset`** — when you don't need named fields. Already covered under [Tuple](#tuple) and [Frozenset](#frozenset).
+
+**4. Custom class with `__setattr__` override** — heavyweight, rare. Reach for it only when you can't use a dataclass (e.g., dynamic field types, inheritance constraints):
+
+```python
+class ReadOnly:
+    def __init__(self, x):
+        object.__setattr__(self, "x", x)
+
+    def __setattr__(self, name, value):
+        raise AttributeError(f"{type(self).__name__} is immutable")
+```
+
+> ⚠️ **Pitfall:** All of these are **shallow** immutability — the object's *bindings* are frozen, but mutable field values can still be mutated. `@dataclass(frozen=True) class C: items: list` lets `c.items.append(...)` succeed. For deep immutability, use immutable field types (`tuple`, `frozenset`, `str`, `int`) all the way down.
+
+> ☕ **Java parallel:** `@dataclass(frozen=True)` ≈ Java `record`. `NamedTuple` is roughly Java's tuple types from Project Amber proposals, but with a 20-year head start. There's no Python equivalent of `final` on a single field — you freeze the whole class or you don't. The Java-Immutables/AutoValue ecosystem maps to: `dataclass(frozen=True)` for the common case, `NamedTuple` for tuple-shaped data, `pydantic.BaseModel` with `model_config = {"frozen": True}` when you also need runtime validation (see [Part 6 § Productivity libs](06_ecosystem_and_packaging.md#productivity-libs)).
+
 ## Class vs instance attributes
 
 A subtle pitfall Java developers regularly hit. Putting a mutable on the class (not in `__init__`) makes it **shared across all instances**:
@@ -822,6 +878,93 @@ print(Plugin.registry)
 
 Common uses: plugin discovery, schema/model registration (web frameworks, ORMs), enforcing subclass invariants at definition time.
 
+## Singleton
+
+In Java the singleton pattern needs care — private constructor, static instance, double-checked locking for thread safety, often an `enum` to be really safe. In Python the same goal is usually trivial: **a Python module IS a singleton.** Code at module level runs once on first import; subsequent imports return the cached module object.
+
+**1. Module-level singleton** (the Pythonic default):
+
+```python
+# config.py
+_settings = {"debug": False, "port": 8080}
+
+def get(key):
+    return _settings[key]
+
+def set(key, value):
+    _settings[key] = value
+```
+
+```python
+# anywhere else
+import config
+config.set("debug", True)
+print(config.get("debug"))         # >>> True
+```
+
+Every importer sees the same module object. No class needed.
+
+**2. Class with `__new__` override** — when you need an actual class (for `isinstance` checks, inheritance, or interface compatibility):
+
+```python
+class Cluster:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self, host="localhost"):
+        # __init__ runs on every Cluster(...) call — guard it
+        if not hasattr(self, "_initialized"):
+            self.host = host
+            self._initialized = True
+
+a = Cluster("db-1")
+b = Cluster("db-2")          # __init__ no-ops because of the guard
+print(a is b)                # >>> True
+print(a.host)                # >>> db-1   (first init wins)
+```
+
+> ⚠️ **Pitfall:** `__init__` runs *every* time you call `Cluster(...)`, even when `__new__` returns the cached instance. Without a guard like `if not hasattr(self, "_initialized")`, every call re-initializes the singleton — usually a bug.
+
+**3. `@cache` on a factory function** — modern, minimal, thread-safe:
+
+```python
+from functools import cache
+
+class Cluster:
+    def __init__(self, host):
+        self.host = host
+
+@cache
+def get_cluster(host="localhost"):
+    return Cluster(host)
+
+a = get_cluster()
+b = get_cluster()            # cache hit — same object
+print(a is b)                # >>> True
+```
+
+Per-key singleton: callers with different `host` get different (but stable) instances. `functools.cache` is thread-safe in CPython.
+
+**4. `Enum` with a single member** — Python's equivalent of Java's "enum-with-one-value singleton" trick. Mostly used for sentinel values:
+
+```python
+from enum import Enum
+
+class Missing(Enum):
+    SENTINEL = object()
+
+MISSING = Missing.SENTINEL
+# Anywhere: `if value is MISSING:` — comparable by identity.
+```
+
+> 💡 **Pythonic:** Reach for the module-level approach first. It's the cleanest, requires no boilerplate, and Java-style double-checked locking concerns don't apply (CPython imports are atomic). Use `__new__` only when you need an actual class. Use `@cache` for parameterized "one-per-key" singletons.
+
+> ☕ **Java parallel:** Java's "enum singleton" pattern (Bloch's Item 3 — guarantees single instance even against reflection / serialization) maps best to Python's module pattern, since you can't easily defeat `import` caching either. The thread-safety dance from Java's classic `getInstance()` is a non-issue — Python's `import` is already serialized.
+
 ## Key Takeaways
 
 - Dunder methods are hooks, not magic — `__eq__` and `__hash__` must stay consistent.
@@ -830,3 +973,5 @@ Common uses: plugin discovery, schema/model registration (web frameworks, ORMs),
 - Class attributes are *shared*; instance attributes (`self.x`) are per-object. The mutable-class-attr trap is the same one as mutable default arguments.
 - Composition > inheritance — even more than in Java, because duck typing and `Protocol` mean you rarely need a shared base.
 - `__init_subclass__` replaces Spring-style classpath scanning with a lightweight definition-time hook.
+- For immutable value objects: `@dataclass(frozen=True)` is the default; `NamedTuple` when you want tuple semantics. Immutability is shallow — use immutable field types for deep guarantees.
+- For singletons: a module IS one. Reach for `__new__` only when you need a class; reach for `@cache` for "one-per-key" factories.

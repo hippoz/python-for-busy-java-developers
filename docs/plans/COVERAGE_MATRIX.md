@@ -172,6 +172,8 @@ Old files are deleted only after Phase 3 verifies this matrix accounts for every
 | Class attr vs instance attr | `02#class-vs-instance-attributes` | Q6 medium + peer |
 | MRO basics | `02#mro` | Q6 medium + peer |
 | `__init_subclass__` | `02#init-subclass` | Q6 min + peer |
+| Immutable objects (`@dataclass(frozen=True)` / `NamedTuple` / `__setattr__` override) | `02#immutable-objects` | User request — important Java concept (final / record / Immutables) |
+| Singleton (module / `__new__` / `@cache` / Enum member) | `02#singleton` | User request — important Java pattern (private ctor / enum singleton / DCL) |
 | Anti-pattern openers (Bean/Interface/AbsFactory/ThreadLocal/Cacheable/SpringScan) | embedded P2/P3/P4 | Peer device |
 | `async with` / `async for` / async ctx mgrs | `04#async-context-managers` | Q6 medium + peer |
 | Async file I/O (`aiofiles` / `to_thread`) | `04#async-file-io` | Peer |
