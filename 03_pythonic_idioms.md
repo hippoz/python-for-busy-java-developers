@@ -502,23 +502,24 @@ class Builder:
 
 ### `Sequence` / `Mapping` vs concrete types
 
-A Java instinct is to declare parameters as `List<T>`. The Pythonic equivalent is the most general protocol you can accept — typically `Sequence`, `Mapping`, or `Iterable`. Pick by what your function actually does:
+A Java instinct is to declare parameters as `List<T>`. The Pythonic equivalent is the most general protocol you can accept — typically `Iterable`, `Sequence`, or `Mapping`. Pick by what your function actually does to its argument:
 
 ```python
 from collections.abc import Sequence, Mapping, Iterable
 
-def total(scores: Sequence[int]) -> int:        # needs len + indexing: list/tuple/range OK
-    return sum(scores)                          # NOT a generator (no len, single-pass)
+def total(scores: Iterable[int]) -> int:        # only iterates → Iterable accepts list/tuple/set/generator
+    return sum(scores)
 
-def render(config: Mapping[str, str]) -> str:   # needs key lookup: dict + dict-likes
-    ...
+def first_score(scores: Sequence[int]) -> int:  # needs len + indexing → list/tuple/range OK, NOT generators
+    if not scores:
+        raise ValueError("empty")
+    return scores[0]
 
-def consume(items: Iterable[int]) -> None:       # only needs to iterate once
-    for x in items:                              # accepts list/tuple/set/generator/anything
-        ...
+def render(config: Mapping[str, str]) -> str:   # needs key lookup → dict and dict-likes
+    return config["title"]
 ```
 
-> ⚠️ **Pitfall:** `Sequence[int]` does *not* accept a generator — sequences support `len()` and indexing, generators don't. If your function only loops once, declare `Iterable[int]` (the genuine `List<T> ≈ Stream<T>` analog for parameters).
+> ⚠️ **Pitfall:** `Sequence[int]` does *not* accept a generator — sequences support `len()` and indexing, generators don't. If your function only iterates once, declare `Iterable[int]` (this is the genuine `List<T> ≈ Stream<T>` analog for parameters).
 
 Rule of thumb: **accept the broadest type that your code actually uses, return the most specific.** The reverse of what's tempting from Java.
 

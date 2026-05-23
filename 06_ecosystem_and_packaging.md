@@ -40,7 +40,7 @@ Goal: cross the venv/pip cognitive hurdle, then know which third-party libraries
 | Application server | None — your process is the server (Gunicorn/Uvicorn host it) |
 | Spring Boot ecosystem | No single equivalent; mix of frameworks + libraries |
 | Testing (JUnit, Mockito) | `pytest` + `unittest.mock` / `pytest-mock` |
-| Static analysis (Checkstyle, SpotBugs, ErrorProne) | `ruff` + `mypy` + `black` |
+| Static analysis (Checkstyle, SpotBugs, ErrorProne, google-java-format) | `ruff` (lint + format) + `mypy` / `pyright` |
 | ORM (Hibernate/JPA) | SQLAlchemy 2.x |
 
 ```java

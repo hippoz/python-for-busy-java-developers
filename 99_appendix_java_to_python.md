@@ -208,7 +208,7 @@ For full treatment, follow the link in each row.
 | Maven / Gradle | `pip` + `venv` + Poetry / uv | [Part 6 § venv-and-packaging](06_ecosystem_and_packaging.md#venv-and-packaging) |
 | `pom.xml` / `build.gradle` | `pyproject.toml` | [Part 6 § pyproject](06_ecosystem_and_packaging.md#pyproject) |
 | Checkstyle / SpotBugs | `ruff` | [Part 6 § tooling](06_ecosystem_and_packaging.md#tooling) |
-| google-java-format | `black` | [Part 6 § tooling](06_ecosystem_and_packaging.md#tooling) |
+| google-java-format | `ruff format` (subsumes `black`) | [Part 6 § tooling](06_ecosystem_and_packaging.md#tooling) |
 | `javac` type checks | `mypy` (run separately, not at runtime) | [Part 6 § tooling](06_ecosystem_and_packaging.md#tooling) |
 | Log4j / SLF4J | `logging` (stdlib) | [Part 5 § logging](05_standard_library.md#logging) |
 | `java.util.logging` | `logging` (stdlib) | [Part 5 § logging](05_standard_library.md#logging) |
