@@ -159,8 +159,10 @@ threads = [threading.Thread(target=increment) for _ in range(4)]
 for t in threads: t.start()
 for t in threads: t.join()
 
-print(counter)                          # usually < 400000
+print(counter)                          # often < 400000; varies by interpreter and load
 ```
+
+On modern CPython this race won't always reproduce — the GIL can let `counter += 1` finish before a context switch in some runs. Repeat the loop many times, or widen the critical section (e.g. add a brief computation between the read and write), and the lost updates become visible. The point isn't that the demo *always* fails — it's that correctness *can't depend* on what the GIL happens to do.
 
 **Safe** — protect the read-modify-write with a `Lock`:
 
@@ -663,7 +665,7 @@ async def main():
 
 > ⚠️ **Pitfall:** A coroutine with no `await` between long blocks is uncancellable until it reaches the next `await`. Don't write big synchronous chunks inside `async def`. If you need to do work that takes a while, either break it up with `await asyncio.sleep(0)` or offload it with `asyncio.to_thread`.
 
-> ⚠️ **Don't swallow `CancelledError`.** A bare `except Exception:` will catch it (in Python 3.8+, `CancelledError` inherits from `BaseException`, so `except Exception:` won't catch it — but `except:` will, and so will some libraries that catch broadly). Re-raise it. Cancellation must propagate.
+> ⚠️ **Don't swallow `CancelledError`.** In Python 3.8+ `asyncio.CancelledError` inherits from `BaseException`, so a bare `except Exception:` will NOT catch it (good). But a bare `except:` clause, `except BaseException:`, or libraries that catch broadly *can* — and if you accidentally swallow it, you break `TaskGroup` and `asyncio.timeout` semantics. If you catch it, re-raise.
 
 ## Exception groups
 

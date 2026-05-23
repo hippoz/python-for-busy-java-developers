@@ -336,7 +336,7 @@ add(2, 3)
 # >>>   -> 5
 ```
 
-> ⚠️ **Pitfall:** Always use `@functools.wraps(func)` on the inner wrapper. Without it, the decorated function loses its name, docstring, and `__wrapped__` link — breaking debuggers, doc generators, and introspection.
+> ⚠️ **Pitfall:** Always use `@functools.wraps(func)` on the inner wrapper. Without it, the decorated function takes on the wrapper's name and empty docstring, and there's no `__wrapped__` link back to the original (introspection tools like `inspect.signature` follow that link to recover the real signature). Skipping `wraps` breaks debuggers, doc generators, and stack traces.
 
 ### Parameterized decorators
 
@@ -502,23 +502,25 @@ class Builder:
 
 ### `Sequence` / `Mapping` vs concrete types
 
-A Java instinct is to declare parameters as `List<T>`. The Pythonic equivalent is the most general protocol you can accept — typically `Sequence`, `Mapping`, or `Iterable`. This lets callers pass tuples, generators, etc.:
+A Java instinct is to declare parameters as `List<T>`. The Pythonic equivalent is the most general protocol you can accept — typically `Sequence`, `Mapping`, or `Iterable`. Pick by what your function actually does:
 
 ```python
 from collections.abc import Sequence, Mapping, Iterable
 
-def total(scores: Sequence[int]) -> int:    # accepts list, tuple, range
-    return sum(scores)
+def total(scores: Sequence[int]) -> int:        # needs len + indexing: list/tuple/range OK
+    return sum(scores)                          # NOT a generator (no len, single-pass)
 
-def render(config: Mapping[str, str]) -> str:   # accepts dict and dict-like
+def render(config: Mapping[str, str]) -> str:   # needs key lookup: dict + dict-likes
     ...
 
-def consume(items: Iterable[int]) -> None:       # accepts anything iterable
-    for x in items:
+def consume(items: Iterable[int]) -> None:       # only needs to iterate once
+    for x in items:                              # accepts list/tuple/set/generator/anything
         ...
 ```
 
-Rule of thumb: **accept the broadest type, return the most specific.** The reverse of what's tempting from Java.
+> ⚠️ **Pitfall:** `Sequence[int]` does *not* accept a generator — sequences support `len()` and indexing, generators don't. If your function only loops once, declare `Iterable[int]` (the genuine `List<T> ≈ Stream<T>` analog for parameters).
+
+Rule of thumb: **accept the broadest type that your code actually uses, return the most specific.** The reverse of what's tempting from Java.
 
 ### Escape hatches: `cast`, `Any`, and pragmas
 

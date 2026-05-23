@@ -155,7 +155,7 @@ print(dt.strftime("%Y-%m-%d %H:%M"))       # >>> 2026-05-23 14:30
 print(dt.isoformat())                      # >>> 2026-05-23T14:30:00
 ```
 
-> ⚠️ **Pitfall:** `fromisoformat` on a string without timezone offset returns a **naive** datetime. If your input might be either, normalize: parse, then `if dt.tzinfo is None: dt = dt.replace(tzinfo=ZoneInfo("UTC"))`. Then `.astimezone(...)` to whatever zone you actually want.
+> ⚠️ **Pitfall:** `fromisoformat` on a string without timezone offset returns a **naive** datetime. Decide your policy explicitly: either *reject* naive inputs (`if dt.tzinfo is None: raise ValueError(...)`), or *assert* a known source zone (`dt = dt.replace(tzinfo=ZoneInfo("UTC"))` — note this attaches a label, it doesn't *convert*). Use `.astimezone(...)` after that if you need to convert.
 
 > ☕ **Java parallel:** `strptime` ≈ `DateTimeFormatter.parse(s, formatter)`. `fromisoformat` ≈ `OffsetDateTime.parse(s)` for ISO inputs.
 
@@ -190,7 +190,7 @@ Path("output/reports").mkdir(parents=True, exist_ok=True)
 ```python
 with open("data.csv") as f:
     for line in f:                          # streamed, one line at a time
-        process(line)
+        print(line, end="")                 # process however you need
 ```
 
 For the small-file case, `Path.read_text()` / `Path.write_text()` are shorter. For large files, the streamed `with open(...)` form keeps memory bounded.
@@ -267,12 +267,13 @@ print(m.group())                         # >>> 12345
 
 # Compile once, reuse — faster in loops
 ID_PATTERN = re.compile(r"order-(\d+)")
+lines = ["order-100 created", "no match here", "order-201 deleted"]
 for line in lines:
     if (m := ID_PATTERN.search(line)):
         order_id = m.group(1)
 ```
 
-> ☕ **Java parallel:** `String` methods overlap with Python `str` methods; `java.util.regex.Pattern`/`Matcher` ≈ `re.compile(...)` + `match`/`search`/`findall`/`sub`. Syntax is the standard PCRE-like flavor — most Java regexes work in Python unchanged.
+> ☕ **Java parallel:** `String` methods overlap with Python `str` methods; `java.util.regex.Pattern`/`Matcher` ≈ `re.compile(...)` + `match`/`search`/`findall`/`sub`. Basic literals, character classes, and capture groups translate cleanly; named groups (`(?P<name>...)` in Python vs `(?<name>...)` in Java), Unicode property classes, and some advanced look-around constructs differ — verify non-trivial patterns before assuming they port.
 
 Use string methods for fixed strings (`startswith`, `endswith`, `in`, `split`). Use `re` for actual patterns. Avoid regexes for trivial fixed-string work — it's slower and less clear.
 
@@ -379,6 +380,7 @@ import random
 print(random.randint(1, 10))             # inclusive both ends
 print(random.choice(["a", "b", "c"]))
 print(random.sample(range(100), 5))      # k items without replacement
+my_list = [1, 2, 3, 4, 5]
 random.shuffle(my_list)                  # in place
 
 # For cryptographic randomness, use SystemRandom or `secrets`:
@@ -552,10 +554,13 @@ print(add5(3))                               # >>> 8
 ```python
 import csv
 
-with open("data.csv") as f:
+# newline="" is the stdlib-recommended way to open CSV files —
+# the csv module handles line endings internally; OS-level newline
+# translation will corrupt embedded newlines (especially on Windows).
+with open("data.csv", newline="") as f:
     reader = csv.DictReader(f)
     for row in reader:
-        process(row["name"], row["age"])
+        print(row["name"], row["age"])
 ```
 
 For richer types (numbers, dates), bring in `pandas` ([Part 6](06_ecosystem_and_packaging.md#numerical-and-data-libs)). For simple structured data, `csv.DictReader` is enough.

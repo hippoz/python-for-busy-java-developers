@@ -184,13 +184,11 @@ This doc set uses four callout types:
 - `> 🐍 **Python 3.X+:** …` — version-gated feature
 
 **Discipline rules:**
-- At most one callout per `###` section
-- Stacked callouts are banned (no two in a row)
-- Teasers (forward pointers) are strictly one sentence + one link — no code, no bullets
+- At most one callout per `###` section under normal circumstances.
+- Stacked callouts (two in a row) are discouraged but allowed when they address genuinely different angles — e.g., a `☕ Java parallel` followed by a `⚠️ Pitfall`, or a `⚠️ Pitfall` followed by a `🐍 Python 3.X+` version note. Each adds information the other doesn't.
+- Teasers (forward pointers) are strictly one sentence + one link — no code, no bullets.
 
 **Baseline:** Python 3.11. Features requiring 3.12+ are flagged with the `🐍` callout. Anything you write in 2026 should target 3.11 minimum.
-
-**Deep dives:** Some advanced sub-topics are folded into collapsible `<details>` blocks (in the deep sections of [Part 3](03_pythonic_idioms.md)) so they don't disrupt reading flow.
 
 **Anchors:** All section IDs are derived from the GitHub auto-slug of the heading. To deep-link to any section, click the section heading in GitHub's rendered view and copy the URL.
 

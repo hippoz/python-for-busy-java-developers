@@ -370,6 +370,7 @@ You will also see `%` formatting inside `logging` calls — and that's idiomatic
 ```python
 import logging
 logger = logging.getLogger(__name__)
+username = "alice"
 logger.info("user %s logged in", username)
 ```
 

@@ -112,7 +112,9 @@ print(type(set()))                  # >>> <class 'set'>
 
 ## Tuple
 
-A tuple is like a list, but **immutable** — and that immutability lets it be used as a dict key or set element. It also signals "fixed-shape record" rather than "growable sequence."
+A tuple is like a list, but **immutable** — and (when its elements are also hashable) that lets it be used as a dict key or set element. It also signals "fixed-shape record" rather than "growable sequence."
+
+> ⚠️ **Pitfall:** A tuple of mutables is still a tuple, but it's **not** hashable. `(1, 2)` works as a dict key; `(1, [])` raises `TypeError: unhashable type: 'list'` when you try.
 
 ```python
 x = (1, 2, 3, 4, 5)
@@ -561,7 +563,7 @@ print(sorted([User(30, "B"), User(20, "A")]))
 # >>> [User(age=20, name='A'), User(age=30, name='B')]
 ```
 
-`frozen=True` makes instances immutable (and hashable, because `__hash__` is generated automatically when `__eq__` is generated and the instance is immutable). `order=True` generates `__lt__`/`__le__`/`__gt__`/`__ge__` based on field order.
+`frozen=True` blocks attribute *rebinding* (`u.age = 30` raises `FrozenInstanceError`) and lets `__hash__` be generated. It is **not** deep immutability — a frozen dataclass with a `list` field still lets `u.items.append(...)`. And the generated `__hash__` still fails at runtime if any field's value is itself unhashable. For value-object semantics that go deeper, use immutable field types (`tuple`, `frozenset`) too. `order=True` generates `__lt__`/`__le__`/`__gt__`/`__ge__` based on field order.
 
 **`__post_init__` for validation:**
 
@@ -591,7 +593,7 @@ class Cart:
     items: list = field(default_factory=list)   # NOT items: list = []
 ```
 
-The `default_factory` runs once per instance. A bare `items: list = []` would share one list across all instances — the same trap covered under [Mutability](#mutability).
+The `default_factory` runs once per instance. Writing `items: list = []` in a dataclass actually raises `ValueError: mutable default <class 'list'> for field items is not allowed: use default_factory` at class-definition time — `@dataclass` knows about the trap covered under [Mutability](#mutability) and refuses to compile. (Plain `def f(items=[]):` has no such protection, which is why that section warns about it.)
 
 > ☕ **Java parallel:** `@dataclass(frozen=True)` is the closest thing to Java `record` + auto-generated `equals`/`hashCode`/`toString` + immutability. For runtime validation comparable to Bean Validation, see `pydantic` in [Part 6 § Productivity libs](06_ecosystem_and_packaging.md#productivity-libs).
 

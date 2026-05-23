@@ -98,11 +98,11 @@ pip install -r requirements.txt
 
 **Higher-level tools** worth knowing:
 
-- **Poetry** — dependency resolution, lockfiles, build/publish in one tool. Familiar to anyone who's used npm/yarn.
-- **uv** — newer, very fast (Rust-based) installer/resolver. Drop-in for `pip` and `pip-tools` workflows.
-- **pip-tools** — `pip-compile` for resolved lockfiles, `pip-sync` for reproducible installs.
+- **uv** — Rust-based, fast. By 2026 it has grown well past "fast `pip`" into a full project + environment manager (`uv init`, `uv add`, `uv sync`, `uv.lock`, `uv run`) that rivals or replaces Poetry for many teams. The default recommendation for greenfield Python projects.
+- **Poetry** — dependency resolution, lockfile, build/publish. Familiar if you've used npm/yarn. Still solid; uv is the more active alternative.
+- **pip-tools** — `pip-compile` for resolved lockfiles, `pip-sync` for reproducible installs. Lighter than Poetry/uv if you already like the raw pip workflow.
 
-For a small project, plain `venv` + `pip` + `pyproject.toml` is fine. For team projects with locked dependencies, pick Poetry or uv and stick with it.
+For a small project, plain `venv` + `pip` + `pyproject.toml` is fine. For new team projects with locked dependencies, start with uv and only move off it if a specific need pushes you elsewhere.
 
 > ☕ **Java parallel:** `venv` ≈ a per-project Maven local repo (but mandatory, not shared). `pip` ≈ Maven dependency download. Poetry/uv ≈ Gradle/Maven for resolution + lockfile + build. `pyproject.toml` ≈ `pom.xml` / `build.gradle`.
 
@@ -192,7 +192,7 @@ class Settings(BaseSettings):
     api_key: str
     debug: bool = False
     max_connections: int = Field(default=10, ge=1, le=100)
-    cors_origins: list[str] = []
+    cors_origins: list[str] = Field(default_factory=list)   # mutable defaults: factory, never []
 
 settings = Settings()                   # reads env / .env / defaults
 print(settings.database_url)
@@ -346,15 +346,16 @@ r = requests.get(url, timeout=(3, 10))  # (connect, read)
 
 `httpx` has a sane default (5s) but you should still set them explicitly to match your SLO.
 
-**Reuse a session** — connection pooling + shared headers:
+**Reuse a session** — connection pooling + shared headers. `requests.Session` has no session-wide timeout setting — pass `timeout` on every call:
 
 ```python
 session = requests.Session()
 session.headers["Authorization"] = "Bearer ..."
-session.timeout = 5                     # not directly supported; pass per-call
 
+urls = ["https://api.example.com/a", "https://api.example.com/b"]
 for url in urls:
-    r = session.get(url)
+    r = session.get(url, timeout=5)     # always per-call
+    r.raise_for_status()
 ```
 
 For `httpx`, the equivalent is `httpx.Client(...)` / `httpx.AsyncClient(...)` — both reuse the underlying TCP connection across requests to the same host.
@@ -428,7 +429,7 @@ app = FastAPI()
 
 @app.get("/users/{uid}")
 def read_user(uid: int, db = Depends(get_db)):
-    return db.query(User).get(uid)
+    return db.get(User, uid)                # SQLAlchemy 2.x primary-key lookup
 ```
 
 **Middleware** — the per-request hook layer:
@@ -499,7 +500,7 @@ hashed = pwd.hash("my-password")
 print(pwd.verify("my-password", hashed))   # >>> True
 ```
 
-> 💡 **Pythonic:** Pick a stack, don't reinvent. JWT + passlib + framework session covers 90% of common auth needs. For OAuth providers, use Authlib rather than rolling your own. For full-app auth with admin panels and user management, Django's batteries are already there.
+> 💡 **Pythonic:** Pick a stack, don't reinvent. JWT + passlib + framework session are the common building blocks for most auth flows. For OAuth providers, use Authlib rather than rolling your own. For full-app auth with admin panels and user management, Django's batteries are already there. Auth is a high-risk domain — borrow audited libraries, get a security review for anything beyond the basics.
 
 ## Database access
 
@@ -699,22 +700,20 @@ def test_with_env(monkeypatch):
 
 ## Tooling
 
-The daily-driver trio:
+The daily-driver pair (was a trio in older docs; `ruff` has subsumed the formatter role):
 
-- **`ruff`** — extremely fast linter (Rust-based). Replaces `flake8` + many plugins. Run on save in your IDE; run in CI.
-- **`black`** — opinionated formatter. Takes formatting debates off the table. Run on save.
-- **`mypy`** — static type checker for [Part 3 type hints](03_pythonic_idioms.md#type-hints). Run in CI.
+- **`ruff`** — extremely fast linter + formatter (Rust-based). Replaces `flake8` + plugins for linting and `black` for formatting in a single tool. Run on save in your IDE; run in CI.
+- **`mypy`** — static type checker for [Part 3 type hints](03_pythonic_idioms.md#type-hints). Run in CI. Alternatives worth knowing: **`pyright`** (Microsoft, used by Pylance in VS Code) and **`basedpyright`** (community fork with stricter defaults). Pick one and stick with it.
 
 ```bash
-ruff check .
-ruff format .         # ruff also formats now; black-compatible
-black .
-mypy myapp/
+ruff check . --fix
+ruff format .          # black-compatible output; no separate `black` needed
+mypy myapp/            # or: pyright myapp/
 ```
 
 Configure all of them in `pyproject.toml` (see [Pyproject](#pyproject) earlier).
 
-> ☕ **Java parallel:** `ruff` ≈ Checkstyle + SpotBugs + ErrorProne combined (and faster); `black` ≈ google-java-format; `mypy` ≈ compile-time type checking, but separate from execution. The trio is roughly the Python equivalent of a strict Java toolchain.
+> ☕ **Java parallel:** `ruff` ≈ Checkstyle + SpotBugs + ErrorProne + google-java-format combined (and far faster); `mypy`/`pyright` ≈ compile-time type checking, but separate from execution. The pair is roughly the Python equivalent of a strict Java toolchain.
 
 ## ML/AI libs
 
@@ -793,7 +792,7 @@ Type hints (Part 3) declare structure; pydantic enforces it at runtime. Use both
 ## Key Takeaways
 
 - One venv per project, always.
-- `pytest` + `ruff` + `mypy` + `black` is the daily-driver toolchain; mock at I/O boundaries, not at internal collaborators.
+- `pytest` + `ruff` + `mypy` (or `pyright`) is the daily-driver toolchain; `ruff format` covers `black`'s old role.
 - `pydantic` for runtime validation — type hints alone don't validate.
 - `pydantic-settings` is the typed-config equivalent of Spring `@ConfigurationProperties`.
 - Pick web framework by project size: Flask/FastAPI = micro / API; Django = batteries-included (Spring Boot scope).

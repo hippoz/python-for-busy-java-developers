@@ -106,7 +106,7 @@ For full treatment, follow the link in each row.
 | `Semaphore` | `threading.Semaphore` | [Part 4 § sync-primitives](04_concurrency.md#sync-primitives) |
 | `Condition` / `wait`/`notify` | `threading.Condition` | [Part 4 § sync-primitives](04_concurrency.md#sync-primitives) |
 | `CountDownLatch(1)` (simple one-shot signal) | `threading.Event` | [Part 4 § sync-primitives](04_concurrency.md#sync-primitives) |
-| `CountDownLatch(N)` (count down to zero) | `threading.Barrier(N)` OR `Semaphore` + counter — see notes | [Part 4 § sync-primitives](04_concurrency.md#sync-primitives) |
+| `CountDownLatch(N)` (count down to zero) | `threading.Barrier(N)` OR `Condition` + integer counter — see notes | [Part 4 § sync-primitives](04_concurrency.md#sync-primitives) |
 | `CyclicBarrier` | `threading.Barrier` | [Part 4 § sync-primitives](04_concurrency.md#sync-primitives) |
 | `BlockingQueue` | `queue.Queue` (threads) / `asyncio.Queue` (async) | [Part 4 § producer-consumer](04_concurrency.md#producer-consumer) |
 | `ExecutorService` | `concurrent.futures.ThreadPoolExecutor` | [Part 4 § thread-pools](04_concurrency.md#thread-pools) |
@@ -116,7 +116,7 @@ For full treatment, follow the link in each row.
 | `try-with-resources` | `with` (sync) / `async with` (coroutines) | [Part 3 § context-managers](03_pythonic_idioms.md#context-managers) |
 | `Thread.interrupt()` | `Task.cancel()` + cooperative cancellation | [Part 4 § cancellation-and-timeouts](04_concurrency.md#cancellation-and-timeouts) |
 
-> ⚠️ **Caveat on `CountDownLatch` → `Event`:** `Event` is a 1-bit flag — fine for "is the system ready yet?" (`CountDownLatch(1)`). For real countdown of N tasks, use `Barrier(N)` (all parties wait until the last arrives) or a counter protected by `Condition`. Don't pretend `Event` covers the general case.
+> ⚠️ **Caveat on `CountDownLatch` → `Event`:** `Event` is a 1-bit flag — fine for "is the system ready yet?" (`CountDownLatch(1)`). For real countdown of N tasks, use `Barrier(N)` (all parties wait until the last arrives — best when the waiters *are* the counting parties) or an integer counter protected by `Condition` (best when watchers and counters are different threads). Don't pretend `Event` covers the general case.
 
 ## I/O and paths
 
