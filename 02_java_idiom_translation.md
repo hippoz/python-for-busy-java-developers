@@ -743,9 +743,12 @@ p = Point(1, 2)
 print(p.x, p.y)       # >>> 1 2
 x, y = p              # tuple unpacks
 # p.x = 99            # AttributeError
+
+# Real tuple — compares equal to a plain tuple of the same shape:
+print(p == (1, 2))    # >>> True
 ```
 
-`NamedTuple` instances are real tuples — they compare structurally, unpack, work as dict keys, and use less memory than a regular class. Use them when "immutable record + tuple semantics" is the right shape.
+`NamedTuple` instances are real tuples — they compare structurally, unpack, and use less memory than a regular class. They're hashable (so they work as dict keys or set elements) **only when all fields are hashable** — same caveat as plain tuples. Use them when "immutable record + tuple semantics" is the right shape.
 
 **3. `tuple` / `frozenset`** — when you don't need named fields. Already covered under [Tuple](#tuple) and [Frozenset](#frozenset).
 
@@ -758,11 +761,34 @@ class ReadOnly:
 
     def __setattr__(self, name, value):
         raise AttributeError(f"{type(self).__name__} is immutable")
+
+    def __delattr__(self, name):
+        raise AttributeError(f"{type(self).__name__} is immutable")
 ```
 
-> ⚠️ **Pitfall:** All of these are **shallow** immutability — the object's *bindings* are frozen, but mutable field values can still be mutated. `@dataclass(frozen=True) class C: items: list` lets `c.items.append(...)` succeed. For deep immutability, use immutable field types (`tuple`, `frozenset`, `str`, `int`) all the way down.
+> ⚠️ **Pitfall:** `__setattr__` is a **convention-level guard, not enforcement.** It blocks `obj.x = ...` and (if you override `__delattr__`) `del obj.x`, but a determined caller can still bypass it via `object.__setattr__(obj, "x", v)` or `obj.__dict__["x"] = v`. Java `final` is JVM-enforced; Python equivalents are at best "we agree not to." If you need a JVM-style hard guarantee, you won't find it in plain Python — use `frozen=True` plus immutable field types and trust callers.
 
-> ☕ **Java parallel:** `@dataclass(frozen=True)` ≈ Java `record`. `NamedTuple` is roughly Java's tuple types from Project Amber proposals, but with a 20-year head start. There's no Python equivalent of `final` on a single field — you freeze the whole class or you don't. The Java-Immutables/AutoValue ecosystem maps to: `dataclass(frozen=True)` for the common case, `NamedTuple` for tuple-shaped data, `pydantic.BaseModel` with `model_config = {"frozen": True}` when you also need runtime validation (see [Part 6 § Productivity libs](06_ecosystem_and_packaging.md#productivity-libs)).
+**5. Static-only: `typing.Final`** — for declaring that a name shouldn't be reassigned. Checked by mypy/pyright, **not enforced at runtime**:
+
+```python
+from typing import Final
+
+MAX_RETRIES: Final = 5
+# MAX_RETRIES = 10        # mypy: Cannot assign to final name
+
+class Config:
+    timeout: Final[int]
+    def __init__(self, t: int) -> None:
+        self.timeout = t  # set once in __init__; mypy will catch later reassignments
+```
+
+`Final` is the closest analog to Java `final` on a single field — but it's a static-checker hint, not a runtime constraint. For real runtime immutability of a whole object, prefer `@dataclass(frozen=True)`.
+
+**Shared pitfall (shallow vs deep):**
+
+> ⚠️ **Pitfall:** All runtime-immutable forms above are **shallow** — the object's *bindings* are frozen, but mutable field values can still be mutated. `@dataclass(frozen=True) class C: items: list` lets `c.items.append(...)` succeed. For deep immutability, use immutable field types (`tuple`, `frozenset`, `str`, `int`) all the way down.
+
+> ☕ **Java parallel:** `@dataclass(frozen=True)` ≈ Java `record`. `NamedTuple` is roughly Java's tuple types from Project Amber proposals, but with a 20-year head start. `typing.Final` is the closest analog to Java `final` on a single field — but it's static-only, not JVM-enforced. The Java-Immutables/AutoValue ecosystem maps to: `dataclass(frozen=True)` for the common case, `NamedTuple` for tuple-shaped data, `pydantic.BaseModel` with `model_config = {"frozen": True}` when you also need runtime validation (see [Part 6 § Productivity libs](06_ecosystem_and_packaging.md#productivity-libs)).
 
 ## Class vs instance attributes
 
@@ -880,7 +906,7 @@ Common uses: plugin discovery, schema/model registration (web frameworks, ORMs),
 
 ## Singleton
 
-In Java the singleton pattern needs care — private constructor, static instance, double-checked locking for thread safety, often an `enum` to be really safe. In Python the same goal is usually trivial: **a Python module IS a singleton.** Code at module level runs once on first import; subsequent imports return the cached module object.
+In Java the singleton pattern needs care — private constructor, static instance, double-checked locking for thread safety, often `enum` to be really safe. Python has four approaches, with very different thread-safety and inheritance properties. Read the warnings.
 
 **1. Module-level singleton** (the Pythonic default):
 
@@ -902,16 +928,45 @@ config.set("debug", True)
 print(config.get("debug"))         # >>> True
 ```
 
-Every importer sees the same module object. No class needed.
+Every normal importer sees the same module object — CPython's import system holds a per-module lock during initial import, so first-import is serialized and double-checked-locking concerns don't apply *to this pattern*. Caveats: `importlib.reload(module)`, deleting from `sys.modules`, and subinterpreters can all give you a fresh module object; this is rare in application code but worth knowing.
 
-**2. Class with `__new__` override** — when you need an actual class (for `isinstance` checks, inheritance, or interface compatibility):
+> 💡 **Pythonic:** Use this first. It's the only Python singleton pattern that's both thread-safe and inheritance-irrelevant by construction. The remaining patterns exist for cases where you need an actual class — and all of them have sharper edges than this one.
+
+**2. Metaclass-based singleton** — the canonical *class-based*, thread-safe, subclass-safe pattern:
+
+```python
+import threading
+
+class SingletonMeta(type):
+    _instances: dict = {}
+    _lock = threading.Lock()
+
+    def __call__(cls, *args, **kwargs):
+        with cls._lock:                          # double-checked: first lock
+            if cls not in cls._instances:        # then re-check inside
+                cls._instances[cls] = super().__call__(*args, **kwargs)
+            return cls._instances[cls]
+
+class Cluster(metaclass=SingletonMeta):
+    def __init__(self, host="localhost"):
+        self.host = host
+
+a = Cluster("db-1")
+b = Cluster("db-2")          # returns the cached a; __init__ does NOT re-run
+print(a is b)                # >>> True
+print(a.host)                # >>> db-1
+```
+
+Metaclass `__call__` runs *instead of* the normal `__init__` path on cached instances, so unlike the `__new__` pattern below you don't need an "init-guard" hack. Keying on `cls` (not just the metaclass) means each subclass gets its own singleton — `class Sub(Cluster): pass; Sub() is not Cluster()`. This is the answer when you need a real class with proper guarantees.
+
+**3. Class with `__new__` override** — the textbook pattern. You'll see it in the wild; know the failure modes:
 
 ```python
 class Cluster:
     _instance = None
 
     def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
+        if cls._instance is None:                # ⚠️ TOCTOU race here
             cls._instance = super().__new__(cls)
         return cls._instance
 
@@ -920,16 +975,11 @@ class Cluster:
         if not hasattr(self, "_initialized"):
             self.host = host
             self._initialized = True
-
-a = Cluster("db-1")
-b = Cluster("db-2")          # __init__ no-ops because of the guard
-print(a is b)                # >>> True
-print(a.host)                # >>> db-1   (first init wins)
 ```
 
-> ⚠️ **Pitfall:** `__init__` runs *every* time you call `Cluster(...)`, even when `__new__` returns the cached instance. Without a guard like `if not hasattr(self, "_initialized")`, every call re-initializes the singleton — usually a bug.
+> ⚠️ **Pitfall:** Two real problems here. **(a) Thread safety:** the `if cls._instance is None` check is a classic TOCTOU race — two threads hitting first-call concurrently can both pass the check, and you get two instances. **(b) Inheritance:** `cls._instance` resolves down the MRO, so a subclass call may reuse the parent's instance (or stomp on it depending on order). For new code prefer the metaclass pattern above; reach for `__new__` only when you genuinely need to customize allocation, and add a `threading.Lock` if cold-start concurrency is plausible.
 
-**3. `@cache` on a factory function** — modern, minimal, thread-safe:
+**4. `@functools.cache` on a factory function** — minimal, per-key, but with one sharp edge:
 
 ```python
 from functools import cache
@@ -947,23 +997,21 @@ b = get_cluster()            # cache hit — same object
 print(a is b)                # >>> True
 ```
 
-Per-key singleton: callers with different `host` get different (but stable) instances. `functools.cache` is thread-safe in CPython.
+`functools.cache` keeps the cache dict internally consistent under threading, **but it does not serialize the wrapped function**. Two threads that simultaneously miss the same key can BOTH run `Cluster(host)`, returning different instances to the two callers. The cache then settles on one of them. This is fine for pure-cache use, but it does **not** give you the "exactly-one" guarantee that "singleton" implies in Java. If you need that, wrap the body in a `threading.Lock` or use the metaclass pattern.
 
-**4. `Enum` with a single member** — Python's equivalent of Java's "enum-with-one-value singleton" trick. Mostly used for sentinel values:
+**5. `Enum` with a single member** — Python's equivalent of Java's "enum-with-one-value" trick. Mostly used for sentinel values:
 
 ```python
-from enum import Enum
+from enum import Enum, auto
 
 class Missing(Enum):
-    SENTINEL = object()
+    SENTINEL = auto()                  # idiomatic; value irrelevant
 
 MISSING = Missing.SENTINEL
 # Anywhere: `if value is MISSING:` — comparable by identity.
 ```
 
-> 💡 **Pythonic:** Reach for the module-level approach first. It's the cleanest, requires no boilerplate, and Java-style double-checked locking concerns don't apply (CPython imports are atomic). Use `__new__` only when you need an actual class. Use `@cache` for parameterized "one-per-key" singletons.
-
-> ☕ **Java parallel:** Java's "enum singleton" pattern (Bloch's Item 3 — guarantees single instance even against reflection / serialization) maps best to Python's module pattern, since you can't easily defeat `import` caching either. The thread-safety dance from Java's classic `getInstance()` is a non-issue — Python's `import` is already serialized.
+> ☕ **Java parallel:** Java's "enum singleton" pattern (Bloch's Item 3 — guarantees single instance even against reflection and serialization) maps best to Python's **module-level** pattern, since you can't easily defeat `import` caching either. The thread-safety dance from Java's classic `getInstance()` is unnecessary *only for the module pattern* — the class-based patterns (`__new__`, `@cache`) reintroduce the same first-call race Java's DCL was designed to solve, which is why the metaclass pattern above includes an explicit lock.
 
 ## Key Takeaways
 
@@ -974,4 +1022,4 @@ MISSING = Missing.SENTINEL
 - Composition > inheritance — even more than in Java, because duck typing and `Protocol` mean you rarely need a shared base.
 - `__init_subclass__` replaces Spring-style classpath scanning with a lightweight definition-time hook.
 - For immutable value objects: `@dataclass(frozen=True)` is the default; `NamedTuple` when you want tuple semantics. Immutability is shallow — use immutable field types for deep guarantees.
-- For singletons: a module IS one. Reach for `__new__` only when you need a class; reach for `@cache` for "one-per-key" factories.
+- For singletons: a module IS one (and is the only pattern that's thread-safe + subclass-irrelevant for free). For a class-based singleton with real guarantees, use the metaclass pattern with a `threading.Lock`. `@functools.cache` does NOT give exactly-once construction under concurrent first calls.

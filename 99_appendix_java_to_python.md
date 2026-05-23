@@ -76,8 +76,9 @@ For full treatment, follow the link in each row.
 | `enum` | `enum.Enum` / `IntEnum` / `StrEnum` (🐍 3.11+) | [Part 2 § enum](02_java_idiom_translation.md#enum) |
 | abstract class + abstract method | `abc.ABC` + `@abstractmethod` (nominal inheritance) | [Part 2 § abstract-classes](02_java_idiom_translation.md#abstract-classes) |
 | `interface` (nominal) | `abc.ABC` (nominal) OR `typing.Protocol` (structural) — see notes | [Part 3 § protocol](03_pythonic_idioms.md#protocol) |
-| `final` field / Immutables / AutoValue | `@dataclass(frozen=True)` (default) / `typing.NamedTuple` | [Part 2 § immutable-objects](02_java_idiom_translation.md#immutable-objects) |
-| Singleton pattern (private ctor, static `INSTANCE`) | a module IS a singleton — or `__new__` override / `@functools.cache` factory / `Enum` member | [Part 2 § singleton](02_java_idiom_translation.md#singleton) |
+| `final` field (per-field, static check) | `typing.Final` (mypy/pyright only; no runtime enforcement) | [Part 2 § immutable-objects](02_java_idiom_translation.md#immutable-objects) |
+| `final` class / Immutables / AutoValue | `@dataclass(frozen=True)` (default) / `typing.NamedTuple` | [Part 2 § immutable-objects](02_java_idiom_translation.md#immutable-objects) |
+| Singleton pattern (private ctor, static `INSTANCE`) | module (default, thread-safe via import lock) / metaclass + `Lock` (class-based, real guarantees) / `__new__` (textbook but racy) / `@cache` (per-key, NOT exactly-once) | [Part 2 § singleton](02_java_idiom_translation.md#singleton) |
 | Enum-as-singleton (Bloch's Item 3) | module-level instance — Python `import` is already serialized | [Part 2 § singleton](02_java_idiom_translation.md#singleton) |
 
 > ⚠️ **Caveat on `interface` → Python:** Java `interface` is *nominal* — implementers must declare `implements X`. Python has two answers: `abc.ABC` for the same nominal contract (subclass must inherit), or `typing.Protocol` for *structural* typing (any class with the right methods qualifies, no inheritance required). Pick `Protocol` when you care about duck typing made checkable; pick `ABC` when you want explicit declared subtyping like Java.
