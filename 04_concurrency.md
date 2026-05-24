@@ -843,7 +843,7 @@ If you came from **Project Reactor** (Spring WebFlux), **RxJava**, or any reacti
 
 | Reactor concept | Python idiom | Notes |
 | :--- | :--- | :--- |
-| `Mono<T>` (0–1 value) | `Awaitable[T]` — usually a `Coroutine` returned by `async def` | `await foo()` is your "subscribe + get the single value." For `Mono.empty()`, use `Awaitable[T | None]` or `Awaitable[None]`. |
+| `Mono<T>` (0–1 value) | `Awaitable[T]` — usually a `Coroutine` returned by `async def` | `await foo()` is your "subscribe + get the single value." For `Mono.empty()`, use `Awaitable[Optional[T]]` (or `Awaitable[T \| None]` on 3.10+). |
 | `Flux<T>` (Reactor) / RxJava `Flowable<T>` (the backpressured one) | `AsyncIterator[T]` / `AsyncGenerator[T, None]` | Consume with `async for x in src:`. RxJava `Observable<T>` is **not** backpressured — only `Flowable` is, which is what maps cleanly here. |
 | `flux.map(f)` | Small async-generator wrapper: `async def mapped(src): async for x in src: yield f(x)` | No fluent chain — compose by passing one generator into the next |
 | `flux.filter(p)` | Same shape, with `if p(x): yield x` | No method chain — just compose generators |
