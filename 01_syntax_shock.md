@@ -123,6 +123,29 @@ The mutable-default trap (`def f(items=[])`) is real and covered in [Part 2 § M
 
 The day-to-day implication: Python has no separate compile step you invoke. `python script.py` does it all. You'll feel this most in fast iteration loops.
 
+### Python implementations
+
+"Python" is a language specification. The interpreter that runs it is an implementation choice. When someone says "Python" they almost always mean **CPython** — but a Java developer should know the alternatives, because some run on the JVM.
+
+| Implementation | What it is | When it matters |
+| :--- | :--- | :--- |
+| **CPython** | Reference implementation in C. From python.org. | Default for ~99% of Python in the wild. C extensions (NumPy, pandas, cryptography, …) all target it. The GIL is a CPython detail. |
+| **PyPy** | Independent implementation with a tracing JIT. | Often 2–10× faster than CPython on pure-Python compute. Some C extensions are slower or unavailable. |
+| **Jython** | Python on the JVM. Compiles to Java bytecode; native interop with Java classes. | When you must run inside a JVM application. Caveat: largely stuck on Python 2.x; Jython 3 has been in progress for years. |
+| **GraalPy** | Modern JVM-based Python on GraalVM. Python 3. | The 2026 answer for "Python + Java in one process." Run Python alongside Java, JS, Ruby on the same runtime. |
+| **IronPython** | Python on .NET. | If you live in the .NET world. Like Jython, .NET interop is the selling point. |
+| **MicroPython** | Stripped-down for microcontrollers. | Embedded / IoT. Subset of the stdlib. |
+
+Practical consequences of the split:
+
+- **The GIL is a CPython thing.** Jython and IronPython have no GIL (and never did). PyPy has one. GraalPy has one that's being phased out per PEP 703 work in the broader ecosystem. Most "Python concurrency" advice you read is implicitly CPython-specific.
+- **Bytecode (`.pyc` files)** is CPython-specific. Other implementations have their own internal forms.
+- **C extensions** (`.so` / `.pyd` built against `Python.h`) target CPython directly. PyPy supports many via `cpyext` (often slower); Jython / IronPython generally do not.
+- **`int` arbitrary precision, the `str`/`bytes` split, generators, decorators** — all language-level. Every conforming implementation has them.
+- **"Python is slow"** is almost always a CPython performance statement. PyPy and GraalPy close most of the gap for compute-bound code.
+
+> ☕ **Java parallel:** "Python" is to "CPython" as "Java SE" is to "OpenJDK" — a spec and a default implementation that people treat as synonymous, with alternatives (OpenJ9, Azul, GraalVM) for specific contexts. For a Java dev, **Jython** and **GraalPy** are the bridge: both let you run Python *inside* a JVM application and call between the two languages at runtime.
+
 ## Entry point
 
 In Java, execution starts from `main()`. In Python, top-level code runs immediately when the file is imported or executed.

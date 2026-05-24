@@ -141,6 +141,7 @@ Alphabetical. Sub-bullets indicate related/grouped topics. Click through to anch
 - **`Protocol` (structural typing)** — [P3 § Protocol](03_pythonic_idioms.md#protocol)
 - **`pydantic`** — [P6 § Productivity libs](06_ecosystem_and_packaging.md#productivity-libs)
 - **`pydantic-settings`** — [P6 § Settings management](06_ecosystem_and_packaging.md#settings-management)
+- **Python implementations (CPython / PyPy / Jython / GraalPy / IronPython / MicroPython)** — [P1 § Execution model](01_syntax_shock.md#execution-model)
 - **Python-specific keywords (cheat sheet)** — [P1 § Python-specific keywords](01_syntax_shock.md#python-specific-keywords)
 - **`pyproject.toml`** — [P6 § Pyproject](06_ecosystem_and_packaging.md#pyproject)
 - **`pytest` (fixtures, parametrize, conftest)** — [P6 § Pytest](06_ecosystem_and_packaging.md#pytest)

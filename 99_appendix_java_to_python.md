@@ -121,6 +121,8 @@ For full treatment, follow the link in each row.
 |---|---|---|
 | `BigDecimal` | `decimal.Decimal` (construct from string!) | [Part 5 § decimal](05_standard_library.md#decimal) |
 | `int` / `long` / `BigInteger` | just `int` (arbitrary precision built in; no separate types, no overflow) | [Part 1 § operators](01_syntax_shock.md#operators) |
+| OpenJDK / Eclipse OpenJ9 / Azul / GraalVM (multiple Java SE impls) | CPython / PyPy / Jython / GraalPy / IronPython / MicroPython (multiple Python impls) | [Part 1 § execution-model](01_syntax_shock.md#execution-model) |
+| Run Python inside a JVM application | Jython (Py2-stuck) or GraalPy (Py3, modern) | [Part 1 § execution-model](01_syntax_shock.md#execution-model) |
 | `Random` | `random` module / `random.SystemRandom` for crypto | [Part 5 § math-random-stats](05_standard_library.md#math-random-stats) |
 
 ## Concurrency

@@ -189,6 +189,7 @@ Old files are deleted only after Phase 3 verifies this matrix accounts for every
 | Python-specific keywords cheat sheet (`pass`/`del`/`is`/`in`/`with`/`yield`/`nonlocal`/`global`/`elif`/`for-else`/`assert`/`match`/`raise from`/`except*`) | `01#python-specific-keywords` | User request — Java devs want one-page reference of "shocking" keywords |
 | `int` is unbounded (no `long` / `BigInteger`; `2**1000` works) | `01#operators` (within, new `### Integers are unbounded` subsection) | User request — Java distinction of `int`/`long`/`BigInteger` collapses to one type |
 | Enum deepening: per-member values via tuple + `__init__`; lookup (`Color["RED"]` / `Color(1)`); iteration (`list(Color)`); Java-feature map (constructor/abstract methods/Comparable/EnumSet); functional API; ordering not automatic pitfall | `02#enum` (within, extended) | User request — Java enums are much richer than named constants |
+| Python implementations (CPython / PyPy / Jython / GraalPy / IronPython / MicroPython) — what each is + GIL/bytecode/C-ext consequences + Java-parallel framing | `01#execution-model` (within, new `### Python implementations` subsection) | User request — Java devs know about Jython/GraalPy as JVM bridges; "Python is slow" is a CPython statement, not a language one |
 | Anti-pattern openers (Bean/Interface/AbsFactory/ThreadLocal/Cacheable/SpringScan) | embedded P2/P3/P4 | Peer device |
 | `async with` / `async for` / async ctx mgrs | `04#async-context-managers` | Q6 medium + peer |
 | Async file I/O (`aiofiles` / `to_thread`) | `04#async-file-io` | Peer |
