@@ -639,11 +639,12 @@ The `else` runs only when no exception was raised — useful for code that shoul
 **Catching multiple exception types** — pass a **tuple** to `except`; one block handles any of them:
 
 ```python
+user_input = "0"
 try:
     value = int(user_input)
     result = 100 / value
 except (ValueError, ZeroDivisionError) as e:
-    print(f"Bad input: {e}")
+    print(f"Bad input: {e}")               # >>> Bad input: division by zero
 ```
 
 The parentheses are required — `except ValueError, ZeroDivisionError:` (no parens) is a syntax error in Python 3. The `as e` clause is optional; use it when you need the exception object.
@@ -651,16 +652,25 @@ The parentheses are required — `except ValueError, ZeroDivisionError:` (no par
 You can also stack distinct `except` clauses when each type needs different handling:
 
 ```python
-try:
-    payload = json.loads(raw)
-except json.JSONDecodeError:
-    log.warning("malformed json, skipping")
-except OSError as e:
-    log.error("io failure: %s", e)
-    raise
+import json, logging
+log = logging.getLogger(__name__)
+
+def load_config(path):
+    try:
+        with open(path, "r") as f:         # OSError if path is missing/unreadable
+            raw = f.read()
+        return json.loads(raw)             # JSONDecodeError if contents are malformed
+    except json.JSONDecodeError:
+        log.warning("malformed json, skipping")
+        return {}
+    except OSError as exc:
+        log.error("io failure: %s", exc)
+        raise
 ```
 
 Clauses are tried top-to-bottom; the first matching type wins. Order from **most specific to most general** — `except Exception:` at the top would shadow everything below it.
+
+> ⚠️ **Pitfall:** The `as <name>` binding is **deleted at the end of the `except` block**, even on the success path. CPython does an implicit `del exc` to break a reference cycle between the exception, its traceback, and the local frame. So `exc` is unbound (not `None`) after the block — touching it raises `NameError`. If you need the value afterward, copy it to a variable defined *outside* the `except`: `err = None; try: ... except OSError as exc: err = exc`. Java's `catch (X e)` has no such cleanup; the variable just goes out of `catch` scope normally.
 
 > ☕ **Java parallel:** Python's `except (A, B):` is Java's `catch (A | B e)` (multi-catch, Java 7+). Stacked `except` clauses are stacked `catch` blocks. Same precedence rule: most specific first.
 
@@ -704,18 +714,20 @@ Every Python exception ultimately inherits from **`BaseException`**, not `Except
 
 ```
 BaseException
-├── SystemExit            ← raised by sys.exit()
-├── KeyboardInterrupt     ← raised on Ctrl-C
-├── GeneratorExit         ← raised when a generator is closed
-└── Exception             ← the base for everything app code should catch or subclass
+├── SystemExit              ← raised by sys.exit()
+├── KeyboardInterrupt       ← raised on Ctrl-C
+├── GeneratorExit           ← raised when a generator is closed
+├── BaseExceptionGroup      ← group wrapper that may carry "don't catch" types (🐍 3.11+)
+│   └── ExceptionGroup      ← group whose members are all Exception subclasses (🐍 3.11+)
+└── Exception               ← the base for everything app code should catch or subclass
     ├── ValueError
     ├── TypeError
     ├── RuntimeError
     ├── OSError
-    └── ... (every other built-in error)
+    └── ... (almost every other built-in error)
 ```
 
-`SystemExit`, `KeyboardInterrupt`, and `GeneratorExit` sit *outside* `Exception` deliberately — they signal "the program is being torn down," not "a bug happened." Writing `except Exception:` correctly lets those signals propagate so Ctrl-C still exits and `sys.exit()` still works.
+`SystemExit`, `KeyboardInterrupt`, `GeneratorExit`, and `BaseExceptionGroup` sit *outside* `Exception` deliberately — they signal "the program is being torn down" or "this group might contain a tear-down signal," not "a bug happened." Writing `except Exception:` correctly lets those signals propagate so Ctrl-C still exits and `sys.exit()` still works. (`ExceptionGroup`, in contrast, inherits from `Exception` because its members are all `Exception` subclasses and *are* safe to catch — see [Part 4 § Exception groups](04_concurrency.md#exception-groups).)
 
 > ⚠️ **Pitfall:** Never write bare `except:` or `except BaseException:` in application code. Both swallow `KeyboardInterrupt` and `SystemExit` — your program will refuse to die on Ctrl-C and `sys.exit()` calls will be eaten. Always use `except Exception:` (or something more specific). Bare `except:` is almost always a bug.
 
@@ -723,7 +735,7 @@ BaseException
 - **Catch:** `except Exception:` as your widest net — never wider.
 - **Subclass:** `class MyError(Exception):` — never inherit from `BaseException` directly.
 
-> ☕ **Java parallel:** `BaseException` is roughly Java's `Throwable`; `Exception` (Python) is roughly Java's `RuntimeException` (Python has no checked/unchecked split, but the carve-out exists for the same reason — `Error` in Java similarly signals "don't catch this in normal code"). The Python 3.11+ `ExceptionGroup` / `BaseExceptionGroup` pair mirrors the same split for the `except*` syntax — see [Part 4 § Exception groups](04_concurrency.md#exception-groups).
+> ☕ **Java parallel:** `BaseException ≈ Throwable`. Python's `Exception` ≈ Java's `Exception` (the catchable branch). Python has no checked/unchecked split, so application errors behave operationally like Java's unchecked `RuntimeException` — callers aren't forced to declare or handle them. The "stuff outside `Exception`" carve-out exists for the same reason Java's `Error` branch does: signal "don't catch this in normal code."
 
 **Chaining causes** (analogous to Java `throw new X(msg, cause)`):
 
@@ -735,6 +747,18 @@ except ValueError as e:
 ```
 
 The `from e` preserves the original exception in `__cause__` and the traceback shows both — exactly what `getCause()` gives you in Java.
+
+**Suppressing the chain** with `raise ... from None`. When you `raise` inside an `except` block, Python *implicitly* chains the new exception to the one being handled (shown in tracebacks as `During handling of the above exception, another exception occurred`). To hide that chain — usually when translating an internal error into a clean public API error — use `from None`:
+
+```python
+def get_user(name):
+    try:
+        return _DB.fetch_user(name)
+    except KeyError:
+        raise LookupError(f"No user named {name!r}") from None    # no internal KeyError in the traceback
+```
+
+Without `from None`, the traceback leaks the underlying `KeyError` to your caller. Java doesn't need this because it doesn't auto-chain — omitting `cause` from the constructor is enough.
 
 **Key model difference:** Python has **no checked exceptions**. You don't declare what a function might raise; callers aren't forced to handle anything. This reduces ceremony but makes it your responsibility to document and handle errors thoughtfully.
 

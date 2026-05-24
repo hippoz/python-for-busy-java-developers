@@ -587,11 +587,11 @@ make_it_quack(Duck())            # quack
 make_it_quack(Person())          # I'm quacking — works, no inheritance, no interface
 ```
 
-> 💡 **Pythonic:** This pairs with **EAFP** (Easier to Ask Forgiveness than Permission). Rather than checking `if hasattr(thing, "quack")` before calling (**LBYL** — Look Before You Leap), just call `thing.quack()` and let `AttributeError` surface if it doesn't quack. EAFP is the idiomatic style.
+The idiomatic style for working with duck-typed code is **EAFP** — *Easier to Ask Forgiveness than Permission*. Rather than guarding the call with `if hasattr(thing, "quack")` (**LBYL** — *Look Before You Leap*), just call `thing.quack()` and let `AttributeError` surface if it doesn't quack. `hasattr` is also not a free "static" check — it actually invokes the attribute lookup machinery (including `__getattr__`, properties, and descriptors) and suppresses any `AttributeError` raised during it, so the guard can both lie and have side effects.
 
 > ☕ **Java parallel:** None at the language level. Java's structural cousins are **lambdas matching functional interfaces** (`Runnable`, `Function<T,R>`) — but those still require a declared `@FunctionalInterface` target type. Groovy and Kotlin (`fun interface`) get closer; plain Java does not.
 
-**Where it shows up most:** test doubles. `unittest.mock.Mock` and `MagicMock` work *because* of duck typing — a `Mock` isn't a subclass of the real thing, it just responds to any attribute access with another `Mock`. No interface to extract, no `@Mockable`, no proxy generation:
+**Where it shows up most:** test doubles. `unittest.mock.Mock` and `MagicMock` work *because* of duck typing — a `Mock` isn't a subclass of the real thing, it implements `__getattr__` to synthesize a new child `Mock` for every attribute access on demand. No interface to extract, no `@Mockable`, no proxy generation:
 
 ```python
 from unittest.mock import Mock
