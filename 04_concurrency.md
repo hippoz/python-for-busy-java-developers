@@ -276,7 +276,15 @@ def inner():
         ...
 ```
 
-> ☕ Like `ReentrantLock`.
+**Rule of thumb: prefer `Lock`; reach for `RLock` only when you must.** `RLock` looks like the safer default — it can't deadlock against itself — but it carries real costs:
+
+- **Runtime overhead** — every acquire/release checks the owning thread and bumps a recursion counter. `Lock` skips both. The gap is small per call but compounds in hot paths.
+- **Architectural smell** — needing reentrancy usually means a locked public method is calling another locked public method on the same object. The cleaner fix is the **locked-public / unlocked-private** split: public methods acquire the lock and delegate to a `_locked_*` helper that assumes the lock is already held. Plain `Lock` forces you to notice.
+- **Predictability** — `Lock` makes critical sections explicit and short. `RLock` invites sprawling, recursively-locked code paths that are harder to reason about.
+
+Reach for `RLock` only when recursion is genuinely unavoidable — e.g., walking a tree where each node's method locks itself and recurses into children, and the locked/unlocked split would force you to thread the lock through every signature.
+
+> ☕ **Java parallel:** `Lock` ≈ a non-reentrant primitive (Java doesn't ship one in `java.util.concurrent` — you'd build it from `Semaphore(1)`). `RLock` ≈ `ReentrantLock`. The convention is inverted, though: Java treats reentrancy as the default — `synchronized` is reentrant, `ReentrantLock` is the canonical `Lock` implementation, and most code reaches for them without a second thought. In Python, the idiomatic default is the non-reentrant `Lock`; `RLock` is a deliberate exception.
 
 ### `Semaphore`
 
