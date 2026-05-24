@@ -717,9 +717,9 @@ BaseException
 ├── SystemExit              ← raised by sys.exit()
 ├── KeyboardInterrupt       ← raised on Ctrl-C
 ├── GeneratorExit           ← raised when a generator is closed
-├── BaseExceptionGroup      ← group wrapper that may carry "don't catch" types (🐍 3.11+)
-│   └── ExceptionGroup      ← group whose members are all Exception subclasses (🐍 3.11+)
+├── BaseExceptionGroup *    ← group wrapper that may carry "don't catch" types (🐍 3.11+)
 └── Exception               ← the base for everything app code should catch or subclass
+    ├── ExceptionGroup *    ← group whose members are all Exception subclasses (🐍 3.11+)
     ├── ValueError
     ├── TypeError
     ├── RuntimeError
@@ -727,7 +727,9 @@ BaseException
     └── ... (almost every other built-in error)
 ```
 
-`SystemExit`, `KeyboardInterrupt`, `GeneratorExit`, and `BaseExceptionGroup` sit *outside* `Exception` deliberately — they signal "the program is being torn down" or "this group might contain a tear-down signal," not "a bug happened." Writing `except Exception:` correctly lets those signals propagate so Ctrl-C still exits and `sys.exit()` still works. (`ExceptionGroup`, in contrast, inherits from `Exception` because its members are all `Exception` subclasses and *are* safe to catch — see [Part 4 § Exception groups](04_concurrency.md#exception-groups).)
+\* `ExceptionGroup` actually *multi-inherits* from both `BaseExceptionGroup` and `Exception` — `class ExceptionGroup(BaseExceptionGroup, Exception)`. It's drawn under `Exception` because that's the side that decides `except Exception:` catches it. The `BaseExceptionGroup` parent only matters when the group could carry a `KeyboardInterrupt` or other non-`Exception` member.
+
+`SystemExit`, `KeyboardInterrupt`, `GeneratorExit`, and `BaseExceptionGroup` sit *outside* `Exception` deliberately — they signal "the program is being torn down" or "this group might contain a tear-down signal," not "a bug happened." Writing `except Exception:` correctly lets those signals propagate so Ctrl-C still exits and `sys.exit()` still works. See [Part 4 § Exception groups](04_concurrency.md#exception-groups) for the `except*` syntax that unpacks them.
 
 > ⚠️ **Pitfall:** Never write bare `except:` or `except BaseException:` in application code. Both swallow `KeyboardInterrupt` and `SystemExit` — your program will refuse to die on Ctrl-C and `sys.exit()` calls will be eaten. Always use `except Exception:` (or something more specific). Bare `except:` is almost always a bug.
 
@@ -751,11 +753,18 @@ The `from e` preserves the original exception in `__cause__` and the traceback s
 **Suppressing the chain** with `raise ... from None`. When you `raise` inside an `except` block, Python *implicitly* chains the new exception to the one being handled (shown in tracebacks as `During handling of the above exception, another exception occurred`). To hide that chain — usually when translating an internal error into a clean public API error — use `from None`:
 
 ```python
+_USERS = {"alice": {"id": 1}, "bob": {"id": 2}}
+
 def get_user(name):
     try:
-        return _DB.fetch_user(name)
+        return _USERS[name]
     except KeyError:
         raise LookupError(f"No user named {name!r}") from None    # no internal KeyError in the traceback
+
+get_user("carol")
+# Traceback (most recent call last):
+#   ...
+# LookupError: No user named 'carol'
 ```
 
 Without `from None`, the traceback leaks the underlying `KeyError` to your caller. Java doesn't need this because it doesn't auto-chain — omitting `cause` from the constructor is enough.
