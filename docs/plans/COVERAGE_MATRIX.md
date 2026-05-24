@@ -221,6 +221,7 @@ Old files are deleted only after Phase 3 verifies this matrix accounts for every
 | `venv` walkthrough | `06#venv-and-packaging` | Q6 medium |
 | `pyproject.toml` | `06#pyproject` | Q6 medium |
 | Duck typing (concept + EAFP + Mock as duck-typed test double + pitfalls) | `03#duck-typing` | User-requested — Java has no language-level equivalent; pairs with existing Protocol section as the runtime/static-checked split |
+| Exception hierarchy (`BaseException` vs `Exception`, why bare `except:` swallows Ctrl-C) | `01#exception-handling` (subsection: `### Exception hierarchy`) | User-asked — common Java-dev gotcha when migrating; clarifies what to catch and what to subclass |
 
 ---
 

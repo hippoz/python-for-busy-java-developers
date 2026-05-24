@@ -670,6 +670,33 @@ except HttpError as e:
 
 > ☕ **Java parallel:** Same shape as a Java exception subclass with extra fields and `super(message)` in the constructor. The only Python-specific quirk is `exc.args` — a tuple of whatever was passed to `super().__init__(...)`. Most apps just put the message there and access structured fields via the named attributes.
 
+### Exception hierarchy
+
+Every Python exception ultimately inherits from **`BaseException`**, not `Exception`. The two are different on purpose:
+
+```
+BaseException
+├── SystemExit            ← raised by sys.exit()
+├── KeyboardInterrupt     ← raised on Ctrl-C
+├── GeneratorExit         ← raised when a generator is closed
+└── Exception             ← the base for everything app code should catch or subclass
+    ├── ValueError
+    ├── TypeError
+    ├── RuntimeError
+    ├── OSError
+    └── ... (every other built-in error)
+```
+
+`SystemExit`, `KeyboardInterrupt`, and `GeneratorExit` sit *outside* `Exception` deliberately — they signal "the program is being torn down," not "a bug happened." Writing `except Exception:` correctly lets those signals propagate so Ctrl-C still exits and `sys.exit()` still works.
+
+> ⚠️ **Pitfall:** Never write bare `except:` or `except BaseException:` in application code. Both swallow `KeyboardInterrupt` and `SystemExit` — your program will refuse to die on Ctrl-C and `sys.exit()` calls will be eaten. Always use `except Exception:` (or something more specific). Bare `except:` is almost always a bug.
+
+**Two rules of thumb:**
+- **Catch:** `except Exception:` as your widest net — never wider.
+- **Subclass:** `class MyError(Exception):` — never inherit from `BaseException` directly.
+
+> ☕ **Java parallel:** `BaseException` is roughly Java's `Throwable`; `Exception` (Python) is roughly Java's `RuntimeException` (Python has no checked/unchecked split, but the carve-out exists for the same reason — `Error` in Java similarly signals "don't catch this in normal code"). The Python 3.11+ `ExceptionGroup` / `BaseExceptionGroup` pair mirrors the same split for the `except*` syntax — see [Part 4 § Exception groups](04_concurrency.md#exception-groups).
+
 **Chaining causes** (analogous to Java `throw new X(msg, cause)`):
 
 ```python
