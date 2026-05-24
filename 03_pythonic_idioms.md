@@ -794,8 +794,8 @@ fetch_with_defaults("https://example.com")  # only need to pass url
 | `Collectors.partitioningBy(p)` | single-pass loop into `truthy` / `falsy` lists (see below — two-comprehension form fails on iterators) |
 | `Collectors.joining(", ")` | `", ".join(str(x) for x in xs)` |
 | `Optional<T>.map(f)` | `f(x) if x is not None else None` |
-| `Optional<T>.orElse(d)` | `x if x is not None else d` (NOTE: eagerly evaluates `d`; Java `orElse` does too) |
-| `Optional<T>.orElseGet(() -> d())` | `x if x is not None else d()` (lazy `d`) — Python conditional is lazy by default |
+| `Optional<T>.orElse(d)` | `x if x is not None else d` — same shape; Java `orElse(d)` evaluates `d` eagerly because it's an argument |
+| `Optional<T>.orElseGet(() -> d())` | `x if x is not None else d()` — Python's conditional expression is lazy on the unused branch, so `d()` runs only when `x is None` |
 | `Function.andThen(g)` | `lambda x: g(f(x))` for one-off composition; `toolz.compose` or `functools.reduce` for chains (no stdlib `compose`) |
 | `Function.identity()` | `lambda x: x` |
 

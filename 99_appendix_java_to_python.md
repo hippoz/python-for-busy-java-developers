@@ -226,8 +226,8 @@ For full treatment, follow the link in each row.
 | `Collectors.partitioningBy(p)` | single-pass loop into `truthy` / `falsy` (two-comprehension form fails on iterators) | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
 | `Collectors.joining(", ")` | `", ".join(str(x) for x in xs)` | [Part 5 § regex-and-strings](05_standard_library.md#regex-and-strings) |
 | `Optional<T>.map(f)` | `f(x) if x is not None else None` | [Part 1 § none-and-is](01_syntax_shock.md#none-and-is) |
-| `Optional<T>.orElse(d)` | `x if x is not None else d` (eager — Java `orElse` also eager) | [Part 1 § none-and-is](01_syntax_shock.md#none-and-is) |
-| `Optional<T>.orElseGet(() -> d())` | `x if x is not None else d()` (lazy — Python conditional is lazy by default) | [Part 1 § none-and-is](01_syntax_shock.md#none-and-is) |
+| `Optional<T>.orElse(d)` | `x if x is not None else d` — same shape; Java `orElse(d)` evaluates `d` eagerly because it's an argument | [Part 1 § none-and-is](01_syntax_shock.md#none-and-is) |
+| `Optional<T>.orElseGet(() -> d())` | `x if x is not None else d()` — Python's conditional expression is lazy on the unused branch, so `d()` runs only when `x is None` | [Part 1 § none-and-is](01_syntax_shock.md#none-and-is) |
 | `Function.identity()` | `lambda x: x` | [Part 3 § functions-as-first-class-objects](03_pythonic_idioms.md#functions-as-first-class-objects) |
 | `Function.andThen(g)` | `lambda x: g(f(x))` for one-off; `toolz.compose` for chains (no stdlib `compose`) | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
 | lambda for `Comparator` | `key=operator.itemgetter("x")` or `key=operator.attrgetter("x")` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
