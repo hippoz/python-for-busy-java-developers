@@ -222,13 +222,14 @@ For full treatment, follow the link in each row.
 | `stream().min(comparing(f))` / `.max(...)` | `min(xs, key=f)` / `max(xs, key=f)` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
 | `stream().mapToInt(f).sum()` | `sum(f(x) for x in xs)` (generator expression — lazy) | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
 | `stream().distinct()` | `set(xs)` (unordered) / `list(dict.fromkeys(xs))` (ordered) | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
-| `Collectors.groupingBy(f)` | `itertools.groupby(sorted(xs, key=f), key=f)` — sort first | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
-| `Collectors.partitioningBy(p)` | `([x for x in xs if p(x)], [x for x in xs if not p(x)])` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `Collectors.groupingBy(f)` | `defaultdict(list)` + single-pass loop (true `Map<K, List<V>>`); `itertools.groupby` only for adjacent runs | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `Collectors.partitioningBy(p)` | single-pass loop into `truthy` / `falsy` (two-comprehension form fails on iterators) | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
 | `Collectors.joining(", ")` | `", ".join(str(x) for x in xs)` | [Part 5 § regex-and-strings](05_standard_library.md#regex-and-strings) |
 | `Optional<T>.map(f)` | `f(x) if x is not None else None` | [Part 1 § none-and-is](01_syntax_shock.md#none-and-is) |
-| `Optional<T>.orElse(d)` | `x if x is not None else d` | [Part 1 § none-and-is](01_syntax_shock.md#none-and-is) |
+| `Optional<T>.orElse(d)` | `x if x is not None else d` (eager — Java `orElse` also eager) | [Part 1 § none-and-is](01_syntax_shock.md#none-and-is) |
+| `Optional<T>.orElseGet(() -> d())` | `x if x is not None else d()` (lazy — Python conditional is lazy by default) | [Part 1 § none-and-is](01_syntax_shock.md#none-and-is) |
 | `Function.identity()` | `lambda x: x` | [Part 3 § functions-as-first-class-objects](03_pythonic_idioms.md#functions-as-first-class-objects) |
-| `Function.andThen(g)` | comprehension or generator pipeline — no built-in `compose` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `Function.andThen(g)` | `lambda x: g(f(x))` for one-off; `toolz.compose` for chains (no stdlib `compose`) | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
 | lambda for `Comparator` | `key=operator.itemgetter("x")` or `key=operator.attrgetter("x")` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
 | `Stream.concat(a, b)` | `itertools.chain(a, b)` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
 | `Stream.takeWhile(p)` / `.dropWhile(p)` | `itertools.takewhile(p, it)` / `itertools.dropwhile(p, it)` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |

@@ -628,12 +628,13 @@ Reference table of keywords that surprise Java devs. Each links to the deep trea
 | `and`, `or`, `not` | Not `&&`, `\|\|`, `!`. Short-circuit. | [§ Control flow](#control-flow) |
 | `is`, `is not` | Identity comparison (≈ Java `==` on references). Reserve for `None` / sentinels. | [§ None and is](#none-and-is) |
 | `in`, `not in` | Membership test — Java needs `.contains()`. | [Part 3 § Iterable vs iterator](03_pythonic_idioms.md#iterable-vs-iterator) |
-| `assert` | Stripped by `python -O` — never for input validation. | [Part 3 § Advanced control flow](03_pythonic_idioms.md#advanced-control-flow) |
+| `assert` | **Opt-out** instead of opt-in. Java `assert` is OFF by default (enabled with `-ea`); Python `assert` is ON by default (stripped with `-O`). Same "don't use for input validation" rule applies. | [Part 3 § Advanced control flow](03_pythonic_idioms.md#advanced-control-flow) |
 | `del` | Remove a binding, list element, dict key, or attribute. | [Part 3 § Advanced control flow](03_pythonic_idioms.md#advanced-control-flow) |
 | `for ... else`, `while ... else` | `else` runs if the loop did NOT `break`. **No Java analog.** | [Part 3 § Advanced control flow](03_pythonic_idioms.md#advanced-control-flow) |
 | `with` | Like `try-with-resources` but for ANY context manager (locks, transactions, timing). | [Part 3 § Context managers](03_pythonic_idioms.md#context-managers) |
 | `lambda` | Anonymous single-expression function — familiar from Java 8+, but Python prefers `def` for non-trivial bodies. | [Part 3 § Functions as first-class objects](03_pythonic_idioms.md#functions-as-first-class-objects) |
-| `yield`, `yield from` | Turns the function into a generator. No Java keyword analog. | [Part 3 § Generators](03_pythonic_idioms.md#generators) |
+| `yield` | Turns the function into a generator. No Java keyword analog. | [Part 3 § Generators](03_pythonic_idioms.md#generators) |
+| `yield from` | Delegate iteration to a sub-generator or iterable (forwards values, exceptions, and `.send()`). | [Part 3 § Generators](03_pythonic_idioms.md#generators) |
 | `nonlocal` | Rebind an enclosing-function variable. Java lambdas can't — captured vars are effectively final. | [Part 3 § Scope and nonlocal](03_pythonic_idioms.md#scope-and-nonlocal) |
 | `global` | Rebind a module-level variable. Smell if you reach for it often. | [Part 3 § Scope and nonlocal](03_pythonic_idioms.md#scope-and-nonlocal) |
 | `async`, `await` | Coroutine declaration / pause-and-resume. | [Part 4 § Async and await](04_concurrency.md#async-and-await) |

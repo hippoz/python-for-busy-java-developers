@@ -704,16 +704,19 @@ For higher-order functions that need "get this key" / "get this attribute" / "ca
 ```python
 from operator import itemgetter, attrgetter, methodcaller
 
-users = [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]
-sorted(users, key=itemgetter("age"))               # sort by dict key
+users = [{"city": "NYC", "name": "Alice", "age": 30},
+         {"city": "NYC", "name": "Bob",   "age": 25},
+         {"city": "SF",  "name": "Carol", "age": 28}]
+
+sorted(users, key=itemgetter("age"))               # sort by single dict key
 sorted(users, key=itemgetter("city", "age"))       # multi-key sort (tuple form)
 
 class User:
     def __init__(self, name, age):
         self.name, self.age = name, age
 
-users = [User("Alice", 30), User("Bob", 25)]
-sorted(users, key=attrgetter("age"))               # sort by attribute
+people = [User("Alice", 30), User("Bob", 25)]
+sorted(people, key=attrgetter("age"))              # sort by attribute
 
 list(map(methodcaller("upper"), ["alice", "bob"])) # call .upper() on each
 # >>> ['ALICE', 'BOB']
@@ -723,21 +726,34 @@ list(map(methodcaller("upper"), ["alice", "bob"])) # call .upper() on each
 
 ### `functools.reduce`
 
-The Java `Stream.reduce()` analog. Less common in Python than in Java because comprehensions plus `sum`/`max`/`min`/`math.prod` cover most cases — but it's the right tool when no specialized built-in fits:
+The Java `Stream.reduce()` analog. Less common in Python than in Java because comprehensions plus `sum`/`max`/`min`/`math.prod` cover most cases — so reach for `reduce` only when **no built-in fits**. Two genuine examples:
 
 ```python
 from functools import reduce
 import operator
-import math
 
-total   = sum([1, 2, 3, 4])                              # 10  — clearer than reduce
-product = math.prod([1, 2, 3, 4])                        # 24  — also clearer
-longest = reduce(lambda a, b: a if len(a) >= len(b) else b,
-                 ["apple", "fig", "banana"])             # 'banana' — genuine reduce use
-acc     = reduce(operator.add, [1, 2, 3, 4], 100)        # 110, with initial value
+# Intersect N sets — no built-in for "all-pairs intersection"
+common = reduce(operator.and_, [{1, 2, 3}, {2, 3, 4}, {3, 4, 5}])
+print(common)                                  # >>> {3}
+
+# Merge N dicts left-to-right (later wins) — operator | is dict merge in 3.9+
+merged = reduce(operator.or_, [{"a": 1}, {"b": 2}, {"a": 3}])
+print(merged)                                  # >>> {'a': 3, 'b': 2}
 ```
 
-Rule of thumb: try `sum`, `min`, `max`, `math.prod`, `any`, `all` first. Reach for `reduce` when the accumulator function is custom.
+Anti-patterns to recognize and avoid:
+
+```python
+# Don't: textbook-but-wrong — built-ins are clearer AND preserve first-max on ties
+worst = reduce(lambda a, b: a if len(a) >= len(b) else b, ["apple", "fig", "banana"])
+# Do:
+best  = max(["apple", "fig", "banana"], key=len)
+
+# Don't: reduce(operator.add, xs, 100)
+# Do:    sum(xs, start=100)
+```
+
+Rule of thumb: try `sum`, `min`, `max`, `math.prod`, `any`, `all`, `math.gcd` first. Reach for `reduce` only when the accumulator function genuinely has no built-in.
 
 ### `functools.partial`
 
@@ -774,13 +790,49 @@ fetch_with_defaults("https://example.com")  # only need to pass url
 | `stream().mapToInt(f).sum()` | `sum(f(x) for x in xs)` (generator expression — lazy, no list) |
 | `stream().count()` | `sum(1 for _ in xs)` or `len(xs)` if it's a list |
 | `stream().distinct()` | `set(xs)` (loses order) or `list(dict.fromkeys(xs))` (preserves order) |
-| `Collectors.groupingBy(f)` | `itertools.groupby(sorted(xs, key=f), key=f)` ⚠ sort first |
-| `Collectors.partitioningBy(p)` | `([x for x in xs if p(x)], [x for x in xs if not p(x)])` |
+| `Collectors.groupingBy(f)` | `defaultdict(list)` + single-pass loop (true materialized `Map<K, List<V>>` — see below) |
+| `Collectors.partitioningBy(p)` | single-pass loop into `truthy` / `falsy` lists (see below — two-comprehension form fails on iterators) |
 | `Collectors.joining(", ")` | `", ".join(str(x) for x in xs)` |
 | `Optional<T>.map(f)` | `f(x) if x is not None else None` |
-| `Optional<T>.orElse(d)` | `x if x is not None else d` |
-| `Function.andThen(g)` | comprehension/generator pipeline — no built-in `compose` |
+| `Optional<T>.orElse(d)` | `x if x is not None else d` (NOTE: eagerly evaluates `d`; Java `orElse` does too) |
+| `Optional<T>.orElseGet(() -> d())` | `x if x is not None else d()` (lazy `d`) — Python conditional is lazy by default |
+| `Function.andThen(g)` | `lambda x: g(f(x))` for one-off composition; `toolz.compose` or `functools.reduce` for chains (no stdlib `compose`) |
 | `Function.identity()` | `lambda x: x` |
+
+### Grouping and partitioning
+
+Java's `Collectors.groupingBy` returns a materialized `Map<K, List<V>>`. The Pythonic equivalent is **not** `itertools.groupby` — `groupby` only groups *adjacent* equal-keyed items and returns one-shot iterators. The materialized idiom is a single-pass loop into `defaultdict(list)`:
+
+```python
+from collections import defaultdict
+
+people = [{"name": "Alice", "city": "NYC"},
+          {"name": "Bob",   "city": "SF"},
+          {"name": "Carol", "city": "NYC"}]
+
+by_city = defaultdict(list)
+for p in people:
+    by_city[p["city"]].append(p["name"])
+
+print(dict(by_city))    # >>> {'NYC': ['Alice', 'Carol'], 'SF': ['Bob']}
+```
+
+O(N), no sort required, no iterator-exhaustion footguns. Use `itertools.groupby` only when the input is already sorted by the key and you want "compress adjacent runs."
+
+Partitioning (boolean grouping) is the same shape — single pass into two lists, never two comprehensions over the same input:
+
+```python
+def partition(pred, iterable):
+    truthy, falsy = [], []
+    for x in iterable:
+        (truthy if pred(x) else falsy).append(x)
+    return truthy, falsy
+
+evens, odds = partition(lambda n: n % 2 == 0, range(10))
+print(evens, odds)      # >>> [0, 2, 4, 6, 8] [1, 3, 5, 7, 9]
+```
+
+> ⚠️ **Pitfall:** Don't write `([x for x in xs if p(x)], [x for x in xs if not p(x)])`. It iterates twice (calling `p` twice per element) and **silently breaks** if `xs` is a generator or any one-shot iterator — the first comprehension exhausts the source and the second list comes out empty.
 
 ### Generator pipelines
 
