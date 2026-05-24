@@ -90,7 +90,11 @@ For full treatment, follow the link in each row.
 | `obj.field` requires declaration | Python lets you add `obj.field = ...` at runtime — typo-prone | [Part 2 § access-conventions](02_java_idiom_translation.md#access-conventions) |
 | `StringUtils` / Apache Commons strings | built into `str` (`upper`, `lower`, `strip`, `split`, `join`, `startswith`, …) | [Part 5 § regex-and-strings](05_standard_library.md#regex-and-strings) |
 | record-style validation in constructor | `__post_init__` in dataclass | [Part 2 § dataclass](02_java_idiom_translation.md#dataclass) |
-| `enum` | `enum.Enum` / `IntEnum` / `StrEnum` (🐍 3.11+) | [Part 2 § enum](02_java_idiom_translation.md#enum) |
+| `enum` (basic) | `enum.Enum` / `IntEnum` / `StrEnum` (🐍 3.11+) | [Part 2 § enum](02_java_idiom_translation.md#enum) |
+| enum constructor + per-member fields | tuple `value` + `__init__` unpack | [Part 2 § enum](02_java_idiom_translation.md#enum) |
+| `Color.values()` / `valueOf("RED")` / `RED.name()` / `RED.ordinal()` | `list(Color)` / `Color["RED"]` / `RED.name` / no built-in (use `list(Color).index(RED)`) | [Part 2 § enum](02_java_idiom_translation.md#enum) |
+| enum implements `Comparable` by declaration order | NOT automatic — use `IntEnum` (compares as int) or define `__lt__` | [Part 2 § enum](02_java_idiom_translation.md#enum) |
+| `EnumSet` / `EnumMap` | `set` of members / `dict` keyed by member (members are hashable) | [Part 2 § enum](02_java_idiom_translation.md#enum) |
 | abstract class + abstract method | `abc.ABC` + `@abstractmethod` (nominal inheritance) | [Part 2 § abstract-classes](02_java_idiom_translation.md#abstract-classes) |
 | `interface` (nominal) | `abc.ABC` (nominal) OR `typing.Protocol` (structural) — see notes | [Part 3 § protocol](03_pythonic_idioms.md#protocol) |
 | `final` field (per-field, static check) | `typing.Final` (mypy/pyright only; no runtime enforcement) | [Part 2 § immutable-objects](02_java_idiom_translation.md#immutable-objects) |
@@ -116,7 +120,7 @@ For full treatment, follow the link in each row.
 | Java | Python | See |
 |---|---|---|
 | `BigDecimal` | `decimal.Decimal` (construct from string!) | [Part 5 § decimal](05_standard_library.md#decimal) |
-| `BigInteger` | `int` (arbitrary precision built in) | — |
+| `int` / `long` / `BigInteger` | just `int` (arbitrary precision built in; no separate types, no overflow) | [Part 1 § operators](01_syntax_shock.md#operators) |
 | `Random` | `random` module / `random.SystemRandom` for crypto | [Part 5 § math-random-stats](05_standard_library.md#math-random-stats) |
 
 ## Concurrency

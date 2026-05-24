@@ -692,6 +692,86 @@ class HttpStatus(IntEnum):
         return self.value >= 400
 ```
 
+### Per-member data via tuples
+
+Java enums let each member carry constructor arguments. Python does the same by making the member's `value` a tuple, then unpacking it in `__init__`:
+
+```python
+from enum import Enum
+
+class Planet(Enum):
+    MERCURY = (3.303e+23, 2.4397e6)
+    VENUS   = (4.869e+24, 6.0518e6)
+    EARTH   = (5.976e+24, 6.37814e6)
+
+    def __init__(self, mass, radius):
+        self.mass = mass
+        self.radius = radius
+
+    @property
+    def surface_gravity(self):
+        G = 6.67300e-11
+        return G * self.mass / (self.radius * self.radius)
+
+print(Planet.EARTH.surface_gravity)   # >>> 9.802652743337129
+```
+
+> ☕ **Java parallel:** This is directly the Java enum-with-constructor pattern:
+> ```java
+> enum Planet {
+>     EARTH(5.976e+24, 6.37814e6);
+>     Planet(double mass, double radius) { ... }
+> }
+> ```
+> Same shape, slightly different syntax. The Python `value` becomes the tuple, the `__init__` unpacks it.
+
+### Lookup and iteration
+
+| Operation | Java | Python |
+| :--- | :--- | :--- |
+| Get all members | `Color.values()` | `list(Color)` or `for c in Color:` |
+| Member count | `Color.values().length` | `len(Color)` |
+| By name | `Color.valueOf("RED")` | `Color["RED"]` |
+| By value | (custom static lookup) | `Color(1)` (raises `ValueError` if no match) |
+| Name string | `RED.name()` | `Color.RED.name` |
+| Declared position | `RED.ordinal()` | (no built-in — use `list(Color).index(member)`) |
+
+```python
+for c in Color:
+    print(c.name, c.value)
+
+print(Color["RED"])      # >>> Color.RED      (lookup by name)
+print(Color(1))          # >>> Color.RED      (lookup by value)
+```
+
+### Java enum features → Python equivalents
+
+| Java enum feature | Python equivalent |
+| :--- | :--- |
+| Per-member constructor args | tuple `value` + `__init__` unpack (above) |
+| Per-member abstract method override | regular method on the class; dispatch on `self` |
+| `implements SomeInterface` | inherit from a `Protocol` or `ABC` alongside `Enum` (rare) |
+| Implicit `Comparable` ordering by declaration | NOT automatic — use `IntEnum` (compares as int) or define `__lt__` |
+| `EnumSet` / `EnumMap` | `set` of members / `dict` keyed by member (members are hashable) |
+| `enum` in `switch` | `match` with class patterns or member values (P1 § Match; P3 § Match patterns) |
+| Singleton + serialization-safe by JVM | Python `Enum` members are singletons; pickling preserves identity |
+
+> ⚠️ **Pitfall:** Java enums are `Comparable` by **declaration order** automatically. Plain Python `Enum` is **not** ordered — `Color.RED < Color.GREEN` raises `TypeError`. Use `IntEnum` (compares as int), `StrEnum` (compares as str), or define `__lt__` explicitly. Don't assume the Java guarantee carries over.
+
+### Functional API
+
+For dynamic enum creation (rare in app code, common in libraries that generate enums from external schemas):
+
+```python
+Color = Enum("Color", "RED GREEN BLUE")            # space- or comma-separated
+print(list(Color))                                  # >>> [<Color.RED: 1>, ...]
+
+# With explicit values:
+Color = Enum("Color", [("RED", "#f00"), ("GREEN", "#0f0"), ("BLUE", "#00f")])
+```
+
+This is the equivalent of building a Java enum at runtime via reflection — possible but rarely needed.
+
 ## Slots
 
 Each Python instance normally carries a `__dict__` for its attributes — flexible but ~100 bytes of overhead. For classes you instantiate by the million (libraries, data structures), `__slots__` shrinks instances and skips the dict:

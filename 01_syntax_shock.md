@@ -161,6 +161,22 @@ print(2 ** 10)     # >>> 1024
 > (1) **`/` is always float division** — `7/2 == 3.5`, not 3. Use `//` for integer division. The Java mistake in reverse: `1/2` in Java is 0, in Python is 0.5.
 > (2) **`%` sign follows the divisor.** Python: `-7 % 3 == 2`. Java: `-7 % 3 == -1`. The Java analog of Python's behavior is `Math.floorMod(-7, 3)`. Hash bucketing and clock arithmetic ports break on this.
 
+### Integers are unbounded
+
+There is no `long`. There is no `BigInteger`. There is only `int` — and it's arbitrary precision out of the box. No overflow, no wraparound, no class-import dance.
+
+```python
+n = 2 ** 1000                           # arithmetic on a 1000-bit int — fine
+print(len(str(n)))                      # >>> 302    (number of decimal digits)
+
+big = 10 ** 100
+print(big * big)                        # 200-digit number, no overflow
+```
+
+> ☕ **Java parallel:** Java distinguishes `int` (32-bit), `long` (64-bit), and `BigInteger` (heap-allocated, arbitrary precision). Python has just `int`. CPython uses a fixed-size machine integer when the value fits in one machine word and transparently switches to an arbitrary-precision representation when it doesn't — you don't see the boundary. `BigInteger`-style code (`a.multiply(b)`) just becomes `a * b`.
+
+The trade-off: arithmetic on huge ints is slower than fixed-width arithmetic. For tight numerical loops where you know a value fits in 64 bits, use NumPy arrays of `int64` ([Part 6 § Numerical and data libs](06_ecosystem_and_packaging.md#numerical-and-data-libs)) — that gets you machine-int speed plus vectorization. `sys.maxsize` exists but it's the **array-index** limit, NOT the int limit (which is unbounded).
+
 ### No `++` or `--`
 
 Python has **no increment/decrement operators**. Use compound assignment:
@@ -659,5 +675,6 @@ Reference table of keywords that surprise Java devs. Each links to the deep trea
 - `if __name__ == "__main__":` for script-only execution.
 - Python has no checked exceptions — discipline matters more.
 - `/` is always float division; `//` is floor division; `%` sign follows the divisor; no `++`/`--`; `**` is exponentiation (not XOR).
+- `int` is unbounded — no separate `long`/`BigInteger`. `2**1000` just works.
 - Ternary reads "value-if-true `if` cond `else` value-if-false."
 - `input()` returns `str`; cast for numbers. `print(*, sep=, end=, file=)` covers most output needs.

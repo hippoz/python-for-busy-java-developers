@@ -187,6 +187,8 @@ Old files are deleted only after Phase 3 verifies this matrix accounts for every
 | String methods catalog (`upper`/`lower`/`title`/`strip`/`startswith`/`removeprefix`…) | `05#regex-and-strings` (within) | User request via `ref/` Day 01 |
 | Functional patterns (`operator` module / `functools.reduce`+`partial` examples / Stream→Python map / `itertools` combinators / generator pipelines / Pythonic-FP framing) | `03#functional-patterns` | User request — honest gap in FP framing for Java/Streams audience |
 | Python-specific keywords cheat sheet (`pass`/`del`/`is`/`in`/`with`/`yield`/`nonlocal`/`global`/`elif`/`for-else`/`assert`/`match`/`raise from`/`except*`) | `01#python-specific-keywords` | User request — Java devs want one-page reference of "shocking" keywords |
+| `int` is unbounded (no `long` / `BigInteger`; `2**1000` works) | `01#operators` (within, new `### Integers are unbounded` subsection) | User request — Java distinction of `int`/`long`/`BigInteger` collapses to one type |
+| Enum deepening: per-member values via tuple + `__init__`; lookup (`Color["RED"]` / `Color(1)`); iteration (`list(Color)`); Java-feature map (constructor/abstract methods/Comparable/EnumSet); functional API; ordering not automatic pitfall | `02#enum` (within, extended) | User request — Java enums are much richer than named constants |
 | Anti-pattern openers (Bean/Interface/AbsFactory/ThreadLocal/Cacheable/SpringScan) | embedded P2/P3/P4 | Peer device |
 | `async with` / `async for` / async ctx mgrs | `04#async-context-managers` | Q6 medium + peer |
 | Async file I/O (`aiofiles` / `to_thread`) | `04#async-file-io` | Peer |
