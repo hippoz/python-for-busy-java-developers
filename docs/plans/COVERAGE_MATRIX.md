@@ -174,6 +174,17 @@ Old files are deleted only after Phase 3 verifies this matrix accounts for every
 | `__init_subclass__` | `02#init-subclass` | Q6 min + peer |
 | Immutable objects (`@dataclass(frozen=True)` / `NamedTuple` / `__setattr__` override) | `02#immutable-objects` | User request — important Java concept (final / record / Immutables) |
 | Singleton (module / `__new__` / `@cache` / Enum member) | `02#singleton` | User request — important Java pattern (private ctor / enum singleton / DCL) |
+| Operators (`/` / `//` / `%` / `**` / bitwise / no `++` / comparison chaining) | `01#operators` | User request via `ref/` Day 02 — Java devs hit these in hour one |
+| Console I/O (`input` / `print(sep=, end=, file=)`) | `01#console-io` | User request via `ref/` Day 01 |
+| Triple-quoted strings | `01#str-vs-bytes` (within) | User request via `ref/` Day 02 |
+| Ternary expression (`x if c else y`) | `01#control-flow` (within) | User request via `ref/` Day 03 |
+| Default parameter values (feature, not just trap) | `01#functions` (within) | User request via `ref/` Day 04 |
+| Dict view methods (`.items` / `.keys` / `.values` / `.get`) | `02#collections-mapping` (within) | User request via `ref/` Day 03 |
+| `super().__init__()` explicit + inheritance example | `02#oop-basics` (within) | User request via `ref/` Day 04 |
+| Dynamic attribute addition (`obj.foo = bar`) | `02#access-conventions` (within) | User request via `ref/` Day 04 |
+| Pass-by-value-of-reference explicit framing | `02#mutability` (within, Java-parallel callout) | User request via `ref/` Day 04 |
+| String interning / `is` on literals SyntaxWarning | `01#none-and-is` (within, pitfall callout) | User request via `ref/` Day 02 |
+| String methods catalog (`upper`/`lower`/`title`/`strip`/`startswith`/`removeprefix`…) | `05#regex-and-strings` (within) | User request via `ref/` Day 01 |
 | Anti-pattern openers (Bean/Interface/AbsFactory/ThreadLocal/Cacheable/SpringScan) | embedded P2/P3/P4 | Peer device |
 | `async with` / `async for` / async ctx mgrs | `04#async-context-managers` | Q6 medium + peer |
 | Async file I/O (`aiofiles` / `to_thread`) | `04#async-file-io` | Peer |

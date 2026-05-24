@@ -95,6 +95,18 @@ for key, value in user_ages.items():
     print(key, value)               # >>> Alice 25  Bob 30
 ```
 
+**Common dict methods:**
+
+```python
+print(user_ages.keys())             # >>> dict_keys(['Alice', 'Bob'])
+print(user_ages.values())           # >>> dict_values([25, 30])
+print(user_ages.items())            # >>> dict_items([('Alice', 25), ('Bob', 30)])
+print("Alice" in user_ages)         # >>> True   (membership tests KEYS, not values)
+print(user_ages.get("Charlie", 0))  # >>> 0      (default when key missing — no KeyError)
+```
+
+`.keys()`, `.values()`, and `.items()` return **views** — live windows over the dict, not copies. Iterating is cheap; convert to a list (`list(d.keys())`) only when you need a snapshot or random access.
+
 > ⚠️ **Pitfall:** `dict` preserves *insertion* order, not sorted order. If you need sorted iteration, do it explicitly: `for k in sorted(my_dict): ...`. Same applies to `set`. Don't reach for a Python `TreeMap` — sort at the read site.
 
 A `set` is the `HashSet` analog. It also deduplicates a sequence in one shot:
@@ -238,6 +250,23 @@ Two things to notice:
 1. `self` is **explicit** — it's the first parameter of every instance method. It plays the role of Java's implicit `this`, but you write it out.
 2. `__init__` is the initializer (not a "constructor" in the strict sense — the object exists before `__init__` runs).
 
+**Inheritance + `super().__init__()`** — Python does NOT call the parent `__init__` implicitly:
+
+```python
+class Employee(Person):
+    def __init__(self, name, age, role):
+        super().__init__(name, age)       # explicit — required
+        self.role = role
+
+    def greet(self):
+        return f"{super().greet()} — I work as {self.role}"
+
+e = Employee("Bob", 30, "engineer")
+print(e.greet())   # >>> Hi, I'm Bob — I work as engineer
+```
+
+> ⚠️ **Pitfall:** Java's implicit `super()` call is **not** in Python. Forgetting `super().__init__(...)` leaves parent-side attributes unset and any code that touches them fails with `AttributeError` later. If you override `__init__` in a subclass, almost always call `super().__init__(...)`.
+
 ## Dict vs class
 
 If you only need a simple data container, a `dict` is often enough:
@@ -323,6 +352,20 @@ print(a._Account__secret)       # >>> shh     (the mangled name)
 ```
 
 > 💡 **Pythonic:** "We're all consenting adults here" — Python relies on convention. Don't fight this with elaborate access-control schemes. If a name starts with `_`, treat it as private.
+
+**Dynamic attribute addition.** Python lets you add attributes to most instances at runtime — no field declaration required:
+
+```python
+class User:
+    def __init__(self, name):
+        self.name = name
+
+u = User("Alice")
+u.role = "admin"             # works! creates a new attribute
+print(u.role)                # >>> admin
+```
+
+> ⚠️ **Pitfall:** Convenient but error-prone — there's no compile-time check that an attribute exists, and a typo like `u.naem = "Bob"` silently creates a new attribute instead of failing. For long-lived domain classes, prefer `@dataclass` (which fixes the schema) or [`__slots__`](#slots) (which forbids dynamic attrs entirely).
 
 ## Composition over inheritance
 
@@ -683,6 +726,8 @@ print(x)   # >>> [1, 2, 3]
 ```
 
 Both `x` and `y` point at the same list object. This is identical to Java reference semantics — just more visible because Python uses mutable collections constantly.
+
+> ☕ **Java parallel:** Same model. Python "passes by value of reference" — what gets passed is the object reference, not a copy of the object. Mutating the object via either binding (`y.append(3)`) is visible through both; reassigning one binding (`y = []`) only changes that binding. The difference from Java is purely how visible this becomes in everyday code, because Python uses mutable collections at every layer.
 
 **Pitfall: mutable default arguments.** This is one of the most-misunderstood Python footguns:
 

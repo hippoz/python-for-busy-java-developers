@@ -13,6 +13,7 @@ Goal: read Python code without flinching. Cover what looks different, the few wo
 - [Functions](#functions)
 - [Execution model](#execution-model)
 - [Entry point](#entry-point)
+- [Operators](#operators)
 - [Control flow](#control-flow)
 - [None and is](#none-and-is)
 - [Truthiness](#truthiness)
@@ -23,6 +24,7 @@ Goal: read Python code without flinching. Cover what looks different, the few wo
 - [Str vs bytes](#str-vs-bytes)
 - [F-strings](#f-strings)
 - [Legacy string formatting](#legacy-string-formatting)
+- [Console I/O](#console-io)
 - [Walrus](#walrus)
 - [Exception handling](#exception-handling)
 - [Modules and imports](#modules-and-imports)
@@ -100,6 +102,19 @@ print(sum_val, prod_val)
 
 That `return a + b, a * b` is implicitly a tuple. The receiving `sum_val, prod_val = ...` unpacks it. Java patterns that use a record or a holder class for "two return values" disappear.
 
+**Default parameter values** make many Java overloads unnecessary:
+
+```python
+def greet(name, salutation="Hi"):
+    print(f"{salutation}, {name}")
+
+greet("Alice")                   # >>> Hi, Alice
+greet("Bob", "Hello")            # >>> Hello, Bob
+greet("Carol", salutation="Hey") # keyword argument — explicit at the call site
+```
+
+The mutable-default trap (`def f(items=[])`) is real and covered in [Part 2 § Mutability](02_java_idiom_translation.md#mutability). For `*args` / `**kwargs` and unpacking see [Part 3 § Args and kwargs](03_pythonic_idioms.md#args-and-kwargs).
+
 ## Execution model
 
 - **Java:** source → `.class` bytecode → JVM → JIT optimization.
@@ -119,6 +134,69 @@ if __name__ == "__main__":
 ```
 
 `__name__` is set to `"__main__"` when the file is the entry point, and to the module's name otherwise. Treat the `if __name__ == "__main__":` block as "this is the `main` method."
+
+## Operators
+
+Most arithmetic and logical operators look familiar, but a handful behave differently or don't exist at all in Java.
+
+### Arithmetic
+
+| Operator | Meaning | Java analog |
+| :--- | :--- | :--- |
+| `+`, `-`, `*` | as in Java | same |
+| `/` | **always** float division | `(double)a / b` |
+| `//` | floor division (`int` when both operands are `int`) | `a / b` for ints |
+| `%` | modulo — **sign follows divisor** | `Math.floorMod(a, b)` |
+| `**` | exponentiation | `Math.pow(a, b)` |
+
+```python
+print(7 / 2)       # >>> 3.5      (NOT integer division)
+print(7 // 2)      # >>> 3        (floor division)
+print(7 % 2)       # >>> 1
+print(2 ** 10)     # >>> 1024
+```
+
+> ⚠️ **Pitfall:** Two arithmetic differences regularly bite Java devs:
+> (1) **`/` is always float division** — `7/2 == 3.5`, not 3. Use `//` for integer division. The Java mistake in reverse: `1/2` in Java is 0, in Python is 0.5.
+> (2) **`%` sign follows the divisor.** Python: `-7 % 3 == 2`. Java: `-7 % 3 == -1`. The Java analog of Python's behavior is `Math.floorMod(-7, 3)`. Hash bucketing and clock arithmetic ports break on this.
+
+### No `++` or `--`
+
+Python has **no increment/decrement operators**. Use compound assignment:
+
+```python
+x = 0
+x += 1                  # NOT x++
+x -= 1                  # NOT x--
+```
+
+This is intentional — Python prefers statements that don't double as expressions.
+
+### Bitwise
+
+Same set as Java on `int`: `&` (AND), `|` (OR), `^` (XOR), `~` (NOT), `<<` (left shift), `>>` (right shift). Python ints are arbitrary precision, so shifts never overflow.
+
+```python
+print(0b1100 & 0b1010)  # >>> 8     (0b1000)
+print(0b1100 | 0b1010)  # >>> 14    (0b1110)
+print(0b1100 ^ 0b1010)  # >>> 6     (0b0110)
+print(~0)               # >>> -1
+print(1 << 5)           # >>> 32
+```
+
+> ⚠️ **Pitfall:** `**` is NOT XOR — it's exponentiation. XOR is `^` (same as Java). And `&` / `|` on `bool` values are **eager** (both sides evaluated, because `bool` is a subclass of `int`). Use `and` / `or` for short-circuit boolean logic — `False and expensive()` skips the call; `False & expensive()` does not.
+
+### Comparison chaining
+
+Python lets comparison operators chain — no Java analog:
+
+```python
+x = 5
+print(0 < x < 10)        # >>> True       (same as: 0 < x and x < 10)
+print(0 < x == 5)        # >>> True
+```
+
+Each variable is evaluated once. Idiomatic for range checks; don't overuse for compound conditions where `and` reads better.
 
 ## Control flow
 
@@ -142,6 +220,16 @@ class TODO:
 def not_implemented_yet():
     pass
 ```
+
+**Ternary expression** — Python has the equivalent of Java's `cond ? a : b`, with unusual word order:
+
+```python
+age = 21
+status = "adult" if age >= 18 else "minor"
+print(status)        # >>> adult
+```
+
+Read it as "**value-if-true** `if` **condition** `else` **value-if-false**." Java devs almost always write it backwards the first few times.
 
 ## None and is
 
@@ -174,6 +262,8 @@ if value is None:
 ```
 
 The Java intuition `.equals()` vs `==` carries over: `is` is the reference-equality `==`; Python's `==` is the `.equals()` you actually want most of the time.
+
+> ⚠️ **Pitfall:** Don't write `x is 3` or `x is "hello"`. CPython interns small ints and short string literals, so it may *appear* to work — but `is` checks identity, not value, so the behavior depends on interpreter internals. Python 3.8+ raises a `SyntaxWarning` for literals after `is`. Reserve `is` for `None`, `True`, `False`, and explicit sentinels; use `==` for everything else.
 
 ## Truthiness
 
@@ -299,6 +389,21 @@ This is one of the most important Python concepts for a Java developer. Python m
 
 A Python `str` is text. It is not "a UTF-8 string" or "a GBK string" internally — those words apply only when you convert text into bytes (or vice versa) at an I/O boundary.
 
+**String literals** — single and double quotes are equivalent. Triple quotes (`"""..."""` or `'''...'''`) preserve newlines literally — useful for multi-line strings, docstrings, SQL queries, and JSON templates:
+
+```python
+single = 'one'
+double = "one"                  # identical to single
+
+multi = """\
+SELECT id, name
+FROM users
+WHERE active = true
+"""
+```
+
+The leading `\` after the opening `"""` suppresses the first newline so the string starts at `SELECT`. Triple-quoted strings are also the standard form for docstrings (the string immediately following a `def` / `class`).
+
 **Encode (`str` → `bytes`):**
 
 ```python
@@ -377,6 +482,44 @@ logger.info("user %s logged in", username)
 The `logger.info("...", arg)` form defers string formatting until the logger actually needs to emit the message. If the log level is suppressed, no formatting work happens. f-strings would do the work unconditionally.
 
 Use f-strings for everything else.
+
+## Console I/O
+
+Two functions cover almost all stdin/stdout work.
+
+### `input()` — read a line from stdin
+
+```python
+name = input("Name: ")          # prints the prompt, reads a line of text
+print(f"Hello, {name}")
+```
+
+`input()` **always returns `str`**. For numbers, convert explicitly:
+
+```python
+age = int(input("Age: "))
+temp = float(input("Temp: "))
+```
+
+> ⚠️ **Pitfall:** Java `Scanner.nextInt()` does the type conversion for you; Python `input()` does not. `int(input("n: ")) + 1` works; `input("n: ") + 1` raises `TypeError: can only concatenate str (not "int") to str`.
+
+### `print()` keyword arguments
+
+Beyond multi-arg printing, `print` takes useful keyword arguments:
+
+```python
+print("a", "b", "c")                    # >>> a b c           (default sep=' ')
+print("a", "b", "c", sep=" | ")         # >>> a | b | c
+
+print("loading", end="")                # no trailing newline
+print(".", end=""); print(".", end="")
+print(" done")                          # >>> loading.. done
+
+import sys
+print("error", file=sys.stderr)         # write to stderr instead of stdout
+```
+
+`sep` goes between args; `end` goes after the whole call (default `"\n"`); `file` redirects output. The combination replaces what would be a `StringBuilder` + `System.out.println` in Java.
 
 ## Walrus
 
@@ -482,3 +625,6 @@ Java developers think in terms of packages → classes → static imports. Pytho
 - `match` is structural pattern matching, not Java `switch` — no fall-through, `,` means tuple, use `|` for OR.
 - `if __name__ == "__main__":` for script-only execution.
 - Python has no checked exceptions — discipline matters more.
+- `/` is always float division; `//` is floor division; `%` sign follows the divisor; no `++`/`--`; `**` is exponentiation (not XOR).
+- Ternary reads "value-if-true `if` cond `else` value-if-false."
+- `input()` returns `str`; cast for numbers. `print(*, sep=, end=, file=)` covers most output needs.

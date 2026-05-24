@@ -277,6 +277,27 @@ for line in lines:
 
 Use string methods for fixed strings (`startswith`, `endswith`, `in`, `split`). Use `re` for actual patterns. Avoid regexes for trivial fixed-string work — it's slower and less clear.
 
+**Common string methods.** The full set a Java dev reaches for daily — all built into `str`, no `StringUtils` import:
+
+| Method | Result |
+| :--- | :--- |
+| `s.upper()` / `s.lower()` | case conversion |
+| `s.capitalize()` | first char upper, rest lower |
+| `s.title()` | every word title-cased |
+| `s.swapcase()` | invert case per char |
+| `s.strip(chars)` / `lstrip` / `rstrip` | trim whitespace (or given chars) — both / left / right |
+| `s.replace(old, new)` | substring replace |
+| `s.split(sep)` | split into list; default splits on any whitespace and collapses runs |
+| `sep.join(iterable)` | inverse of split: `", ".join(["a", "b"])` → `"a, b"` |
+| `s.startswith(p)` / `s.endswith(p)` | prefix/suffix check (accepts tuple for any-of) |
+| `s.find(sub)` / `s.index(sub)` | locate substring; `find` returns -1, `index` raises |
+| `s.zfill(n)` | zero-pad on left to length `n` |
+| `s.ljust(n)` / `s.rjust(n)` / `s.center(n)` | pad/align to width |
+| `s.count(sub)` | non-overlapping occurrences |
+| `s.removeprefix(p)` / `s.removesuffix(p)` | 🐍 3.9+ — strip a known prefix/suffix safely |
+
+Run `help(str)` in the REPL for the full catalog.
+
 ## JSON
 
 ```python

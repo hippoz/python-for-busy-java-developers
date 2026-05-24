@@ -35,13 +35,23 @@ For full treatment, follow the link in each row.
 | Java | Python | See |
 |---|---|---|
 | `String` | `str` | [Part 1 § str-vs-bytes](01_syntax_shock.md#str-vs-bytes) |
+| triple-quoted string literal | `"""..."""` / `'''...'''` | [Part 1 § str-vs-bytes](01_syntax_shock.md#str-vs-bytes) |
 | `Math` | `math` module | [Part 5 § math-random-stats](05_standard_library.md#math-random-stats) |
+| `Math.pow(a, b)` | `a ** b` (built-in operator) | [Part 1 § operators](01_syntax_shock.md#operators) |
+| `Math.floorMod(a, b)` | `a % b` (Python `%` already sign-follows-divisor) | [Part 1 § operators](01_syntax_shock.md#operators) |
+| `a / b` (int division when ints) | `a // b` (floor division) | [Part 1 § operators](01_syntax_shock.md#operators) |
+| `(double)a / b` | `a / b` (Python `/` is always float) | [Part 1 § operators](01_syntax_shock.md#operators) |
+| `x++` / `x--` | `x += 1` / `x -= 1` (no `++`/`--` in Python) | [Part 1 § operators](01_syntax_shock.md#operators) |
+| `cond ? a : b` (ternary) | `a if cond else b` | [Part 1 § control-flow](01_syntax_shock.md#control-flow) |
+| chained `a < x && x < b` | `a < x < b` (true chaining) | [Part 1 § operators](01_syntax_shock.md#operators) |
 | `null` | `None` | [Part 1 § none-and-is](01_syntax_shock.md#none-and-is) |
 | `Object` | `object` | — |
 | `Integer.parseInt(s)` | `int(s)` | — |
 | `Double.parseDouble(s)` | `float(s)` | — |
 | `Exception` | `Exception` | [Part 1 § exception-handling](01_syntax_shock.md#exception-handling) |
-| `System.out.println(...)` | `print(...)` | — |
+| `System.out.println(...)` | `print(...)` (with `sep=`, `end=`, `file=`) | [Part 1 § console-io](01_syntax_shock.md#console-io) |
+| `Scanner.nextLine()` | `input(prompt)` (returns `str`; cast for numbers) | [Part 1 § console-io](01_syntax_shock.md#console-io) |
+| `System.err.println(...)` | `print(..., file=sys.stderr)` | [Part 1 § console-io](01_syntax_shock.md#console-io) |
 
 ## Collections
 
@@ -59,6 +69,9 @@ For full treatment, follow the link in each row.
 | `byte[]` | `bytes` (immutable) / `bytearray` (mutable) | [Part 2 § binary-types](02_java_idiom_translation.md#binary-types) |
 | `Map<K,Integer>` frequency | `collections.Counter` | [Part 5 § collections-module](05_standard_library.md#collections-module) |
 | `Map<K,List<V>>` | `collections.defaultdict(list)` | [Part 5 § collections-module](05_standard_library.md#collections-module) |
+| `Map.entrySet()` / `keySet()` / `values()` | `d.items()` / `d.keys()` / `d.values()` (live views) | [Part 2 § collections-mapping](02_java_idiom_translation.md#collections-mapping) |
+| `Map.getOrDefault(k, dflt)` | `d.get(k, dflt)` | [Part 2 § collections-mapping](02_java_idiom_translation.md#collections-mapping) |
+| `Map.containsKey(k)` | `k in d` | [Part 2 § collections-mapping](02_java_idiom_translation.md#collections-mapping) |
 
 > ⚠️ **Caveat on `unmodifiableSet` → `frozenset`:** Java's `unmodifiableSet` is a *view* — mutations to the backing set ARE visible through it. `frozenset` is a *copy* — independent of any source set. If you need a live read-only view in Python, expose a `MappingProxyType` (for dicts) or hand back a copy at the API boundary.
 
@@ -72,6 +85,9 @@ For full treatment, follow the link in each row.
 | `Comparable.compareTo` | `__lt__` / `functools.total_ordering` / `sorted(key=…)` | [Part 2 § java-object-model-mapping](02_java_idiom_translation.md#java-object-model-mapping) |
 | `Cloneable` | `copy.copy` / `copy.deepcopy` | [Part 2 § java-object-model-mapping](02_java_idiom_translation.md#java-object-model-mapping) |
 | `record` | `@dataclass(frozen=True)` | [Part 2 § dataclass](02_java_idiom_translation.md#dataclass) |
+| implicit `super()` in subclass ctor | **explicit** `super().__init__(...)` (Python does NOT auto-call) | [Part 2 § oop-basics](02_java_idiom_translation.md#oop-basics) |
+| `obj.field` requires declaration | Python lets you add `obj.field = ...` at runtime — typo-prone | [Part 2 § access-conventions](02_java_idiom_translation.md#access-conventions) |
+| `StringUtils` / Apache Commons strings | built into `str` (`upper`, `lower`, `strip`, `split`, `join`, `startswith`, …) | [Part 5 § regex-and-strings](05_standard_library.md#regex-and-strings) |
 | record-style validation in constructor | `__post_init__` in dataclass | [Part 2 § dataclass](02_java_idiom_translation.md#dataclass) |
 | `enum` | `enum.Enum` / `IntEnum` / `StrEnum` (🐍 3.11+) | [Part 2 § enum](02_java_idiom_translation.md#enum) |
 | abstract class + abstract method | `abc.ABC` + `@abstractmethod` (nominal inheritance) | [Part 2 § abstract-classes](02_java_idiom_translation.md#abstract-classes) |
