@@ -6,7 +6,8 @@ No source code, no build, no tests — only prose and cross-linked Markdown.
 ## Repo layout
 
 - `00_index.md` — README, topic map, mindset shift, conventions
-- `01_syntax_shock.md` → `06_ecosystem_and_packaging.md` — the 6 parts
+- `01_syntax_shock.md` → `06_ecosystem_and_packaging.md` — the 6 core parts
+- `07_interoperability.md` — optional Part 7 on Python ↔ Java/Node/C++ integration (RAG use case)
 - `99_appendix_java_to_python.md` — Java→Python lookup tables
 - `docs/plans/RESTRUCTURE_PLAN.md` — 11-decision plan with peer-review changelog
 - `docs/plans/COVERAGE_MATRIX.md` — every old `§` from `Part{1..5}.md` mapped to its new home; touched whenever new content is added

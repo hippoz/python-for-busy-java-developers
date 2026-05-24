@@ -26,6 +26,7 @@ For full treatment, follow the link in each row.
 - [Auth and security](#auth-and-security)
 - [HTTP and URLs](#http-and-urls)
 - [Streams and functional](#streams-and-functional)
+- [Interop and integration](#interop-and-integration)
 - [Testing](#testing)
 - [Tooling](#tooling)
 
@@ -240,6 +241,28 @@ For full treatment, follow the link in each row.
 | `Stream.concat(a, b)` | `itertools.chain(a, b)` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
 | `Stream.takeWhile(p)` / `.dropWhile(p)` | `itertools.takewhile(p, it)` / `itertools.dropwhile(p, it)` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
 | `BiFunction` partial application | `functools.partial(f, x)` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+
+## Interop and integration
+
+| Need / Java reference | Python / cross-language answer | See |
+|---|---|---|
+| Default cross-language boundary | HTTP/REST (FastAPI server) | [Part 7 § Choosing an interop pattern](07_interoperability.md#choosing-an-interop-pattern) |
+| Typed RPC across languages | gRPC with shared `.proto` (Python via `grpcio-tools`) | [Part 7 § Python and Java](07_interoperability.md#python-and-java) |
+| Java calling a Python service | HTTP (`HttpClient` / OkHttp / `WebClient`) → FastAPI | [Part 7 § Python and Java](07_interoperability.md#python-and-java) |
+| Embed Python inside JVM app | **GraalPy** (modern, Py3) or **Py4J** (PySpark mechanism); avoid Jython (Py2-stuck) | [Part 7 § Python and Java](07_interoperability.md#python-and-java) |
+| Call Java from Python | **JPype** (loads JVM into Python process) or **Py4J** | [Part 7 § Python and Java](07_interoperability.md#python-and-java) |
+| Node.js calling a Python service | HTTP/REST or gRPC (same shape as Java) | [Part 7 § Python and Node.js](07_interoperability.md#python-and-nodejs) |
+| Streaming LLM tokens to browser | **Server-Sent Events** (FastAPI `StreamingResponse`) | [Part 7 § Python and Node.js](07_interoperability.md#python-and-nodejs) |
+| Bidirectional browser ↔ server | WebSocket (FastAPI / Starlette) | [Part 7 § Python and Node.js](07_interoperability.md#python-and-nodejs) |
+| Run Python in the browser | **Pyodide** (CPython on WebAssembly) | [Part 7 § Python and Node.js](07_interoperability.md#python-and-nodejs) |
+| Python calling a C library | `ctypes` (stdlib, no compile) or `cffi` (cleaner) | [Part 7 § Python and C and C++](07_interoperability.md#python-and-c-and-c) |
+| Python calling C++ | **`pybind11`** (modern default; what PyTorch/FAISS use) | [Part 7 § Python and C and C++](07_interoperability.md#python-and-c-and-c) |
+| Hot-path optimization in pure Python | **Cython** (annotate types, compile to C extension) | [Part 7 § Python and C and C++](07_interoperability.md#python-and-c-and-c) |
+| Schema source of truth across languages | Pydantic → JSON Schema → TS/Java POJO; or OpenAPI from FastAPI | [Part 7 § Schema sharing across languages](07_interoperability.md#schema-sharing-across-languages) |
+| Cross-language large-int round-trip | Use **string** representation (JSON numbers ≠ JS BigInt safe) or Protobuf `int64` | [Part 7 § Pitfalls](07_interoperability.md#pitfalls) |
+| Cross-language binary data exchange | **Protobuf** / **Arrow** / **Parquet** — NOT `pickle` | [Part 7 § Pitfalls](07_interoperability.md#pitfalls) |
+| RAG / ML service shape (production default) | Sidecar pattern — Python container behind HTTP/gRPC; polyglot frontend | [Part 7 § RAG-specific integration patterns](07_interoperability.md#rag-specific-integration-patterns) |
+| Indexing in Python, queries from anywhere | Vector store with native clients per language (Pinecone / Weaviate / Qdrant / pgvector / Milvus) | [Part 7 § RAG-specific integration patterns](07_interoperability.md#rag-specific-integration-patterns) |
 
 ## Testing
 

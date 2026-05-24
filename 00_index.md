@@ -14,6 +14,7 @@ Two paths through the material:
 
 - **Fast path (~1 day):** [Part 1](01_syntax_shock.md) → [Part 3](03_pythonic_idioms.md). You can read Python code and write idiomatic Python.
 - **Deep path (~1 week):** [Part 1](01_syntax_shock.md) → [Part 2](02_java_idiom_translation.md) → [Part 3](03_pythonic_idioms.md) → [Part 4](04_concurrency.md) → [Part 5](05_standard_library.md) → [Part 6](06_ecosystem_and_packaging.md). You can ship Python services.
+- **Integration path (+ ~2 hours, optional):** add [Part 7](07_interoperability.md) when you need to integrate a Python service (typically AI/RAG) with Java, Node.js, or C/C++.
 
 **Prerequisite chart:**
 
@@ -24,6 +25,7 @@ Two paths through the material:
 | Part 4 | Part 3 (generators, iterables, context managers all feed coroutines) |
 | Part 5 | Part 1 |
 | Part 6 | Part 5 (stdlib-first reflex) |
+| Part 7 | Part 6 (FastAPI, HTTP clients) + Part 4 (async streaming) |
 
 ## The parts
 
@@ -33,7 +35,8 @@ Two paths through the material:
 4. **[Concurrency](04_concurrency.md)** — pick the right model
 5. **[Standard Library](05_standard_library.md)** — stdlib: just import
 6. **[Ecosystem & Packaging](06_ecosystem_and_packaging.md)** — venv, pip, third-party
-7. **[Appendix: Java → Python Lookup](99_appendix_java_to_python.md)** — single-table reference
+7. **[Interoperability](07_interoperability.md)** — integrate Python (RAG / ML) with Java, Node.js, C/C++
+8. **[Appendix: Java → Python Lookup](99_appendix_java_to_python.md)** — single-table reference
 
 ## Topic map
 
@@ -106,6 +109,10 @@ Alphabetical. Sub-bullets indicate related/grouped topics. Click through to anch
 - **Immutable objects (`@dataclass(frozen=True)` / `NamedTuple` / `tuple`)** — [P2 § Immutable objects](02_java_idiom_translation.md#immutable-objects)
 - **Imports** — [P1 § Modules and imports](01_syntax_shock.md#modules-and-imports)
 - **`int` is unbounded (no `long` / `BigInteger`)** — [P1 § Operators](01_syntax_shock.md#operators)
+- **Interop pattern chooser (HTTP / gRPC / queue / in-process / FFI)** — [P7 § Choosing an interop pattern](07_interoperability.md#choosing-an-interop-pattern)
+- **Interop: Python ↔ Java (Py4J / JPype / GraalPy / Jython)** — [P7 § Python and Java](07_interoperability.md#python-and-java)
+- **Interop: Python ↔ Node.js (HTTP / SSE / Pyodide / `python-shell`)** — [P7 § Python and Node.js](07_interoperability.md#python-and-nodejs)
+- **Interop: Python ↔ C / C++ (`ctypes` / `cffi` / `pybind11` / Cython)** — [P7 § Python and C and C++](07_interoperability.md#python-and-c-and-c)
 - **Introspection (`type`/`isinstance`/`getattr`/`inspect`)** — [P3 § Introspection](03_pythonic_idioms.md#introspection)
 - **`is` vs `==`** — [P1 § None and is](01_syntax_shock.md#none-and-is)
 - **Iterable vs iterator** — [P3 § Iterable vs iterator](03_pythonic_idioms.md#iterable-vs-iterator)
@@ -140,6 +147,8 @@ Alphabetical. Sub-bullets indicate related/grouped topics. Click through to anch
 - **Producer-consumer (`queue.Queue`/`asyncio.Queue`)** — [P4 § Producer-consumer](04_concurrency.md#producer-consumer)
 - **`Protocol` (structural typing)** — [P3 § Protocol](03_pythonic_idioms.md#protocol)
 - **`pydantic`** — [P6 § Productivity libs](06_ecosystem_and_packaging.md#productivity-libs)
+- **RAG integration patterns (sidecar / shared vector store / streaming / embedding service)** — [P7 § RAG-specific integration patterns](07_interoperability.md#rag-specific-integration-patterns)
+- **Schema sharing (Pydantic → JSON Schema → TS / Java POJO; OpenAPI from FastAPI)** — [P7 § Schema sharing across languages](07_interoperability.md#schema-sharing-across-languages)
 - **`pydantic-settings`** — [P6 § Settings management](06_ecosystem_and_packaging.md#settings-management)
 - **Python implementations (CPython / PyPy / Jython / GraalPy / IronPython / MicroPython)** — [P1 § Execution model](01_syntax_shock.md#execution-model)
 - **Python-specific keywords (cheat sheet)** — [P1 § Python-specific keywords](01_syntax_shock.md#python-specific-keywords)
