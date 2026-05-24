@@ -16,6 +16,7 @@ Goal: stop writing Java-in-Python. Cover the language features that separate "Py
 - [Context managers](#context-managers)
 - [Decorators](#decorators)
 - [Type hints](#type-hints)
+- [Duck typing](#duck-typing)
 - [Protocol](#protocol)
 - [Match patterns](#match-patterns)
 - [Functions as first-class objects](#functions-as-first-class-objects)
@@ -566,9 +567,50 @@ def f(x: object) -> int:
 
 Type hints are absolutely worth adopting. Run mypy in CI. Annotate public APIs aggressively, internals lazily. But don't confuse them with Java's compile-time type system: they're a separate tool layered over a dynamic language.
 
+## Duck typing
+
+**"If it walks like a duck and quacks like a duck, it's a duck."** Python doesn't check what type an object *is* — it checks whether the object has the methods/attributes the code actually uses, at the moment it uses them. No `implements` keyword, no declared interface, no compile-time check. The object just needs to respond to the calls.
+
+Java has no equivalent. Java is **nominally typed** — a `Duck` parameter accepts only things that `extends Duck` or `implements Duck`. The relationship must be declared in the type hierarchy. Even if `Goose` has an identical `quack()` method, you cannot pass a `Goose` to a method expecting `Duck` without an explicit `implements` or an adapter. Python doesn't care about the hierarchy; it only cares whether `.quack()` resolves at call time.
+
+```python
+class Duck:
+    def quack(self): print("quack")
+
+class Person:
+    def quack(self): print("I'm quacking")
+
+def make_it_quack(thing):
+    thing.quack()                # no type check — just calls the method
+
+make_it_quack(Duck())            # quack
+make_it_quack(Person())          # I'm quacking — works, no inheritance, no interface
+```
+
+> 💡 **Pythonic:** This pairs with **EAFP** (Easier to Ask Forgiveness than Permission). Rather than checking `if hasattr(thing, "quack")` before calling (**LBYL** — Look Before You Leap), just call `thing.quack()` and let `AttributeError` surface if it doesn't quack. EAFP is the idiomatic style.
+
+> ☕ **Java parallel:** None at the language level. Java's structural cousins are **lambdas matching functional interfaces** (`Runnable`, `Function<T,R>`) — but those still require a declared `@FunctionalInterface` target type. Groovy and Kotlin (`fun interface`) get closer; plain Java does not.
+
+**Where it shows up most:** test doubles. `unittest.mock.Mock` and `MagicMock` work *because* of duck typing — a `Mock` isn't a subclass of the real thing, it just responds to any attribute access with another `Mock`. No interface to extract, no `@Mockable`, no proxy generation:
+
+```python
+from unittest.mock import Mock
+
+def send_report(emailer, report):
+    emailer.send(to="boss@example.com", body=report)
+
+fake = Mock()
+send_report(fake, "Q2 numbers")
+fake.send.assert_called_once_with(to="boss@example.com", body="Q2 numbers")
+```
+
+`fake` is not an `Emailer`. It has no parent class in common with `Emailer`. The SUT never asks — it just calls `.send(...)` and the mock records it.
+
+> ⚠️ **Pitfall:** Duck typing defers all "does this fit?" checks to **runtime**, on the code path that uses the missing method. A typo, a renamed method, or a partial mock can pass tests and only fail in production when an untested branch finally calls the missing method. Mitigations: use `typing.Protocol` (next section) so mypy catches shape mismatches statically; use `spec=RealClass` on mocks (`Mock(spec=Emailer)`) so the mock refuses unknown attributes; cover error paths in tests, not just the happy path.
+
 ## Protocol
 
-`typing.Protocol` is **structural typing** — duck typing made checkable. A class satisfies a protocol by having the right methods, not by inheriting:
+`typing.Protocol` is **structural typing** — duck typing made checkable (see [Duck typing](#duck-typing) above). A class satisfies a protocol by having the right methods, not by inheriting:
 
 ```python
 from typing import Protocol

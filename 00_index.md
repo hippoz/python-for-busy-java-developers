@@ -147,6 +147,7 @@ Alphabetical. Sub-bullets indicate related/grouped topics. Click through to anch
 - **`pickle` (with safety warning)** — [P5 § Pickle](05_standard_library.md#pickle)
 - **Producer-consumer (`queue.Queue`/`asyncio.Queue`)** — [P4 § Producer-consumer](04_concurrency.md#producer-consumer)
 - **`Protocol` (structural typing)** — [P3 § Protocol](03_pythonic_idioms.md#protocol)
+- **Duck typing (+ EAFP, Mock as duck-typed test double)** — [P3 § Duck typing](03_pythonic_idioms.md#duck-typing)
 - **`pydantic`** — [P6 § Productivity libs](06_ecosystem_and_packaging.md#productivity-libs)
 - **RAG integration patterns (Python-as-service / shared vector store / streaming / embedding service)** — [P7 § RAG-specific integration patterns](07_interoperability.md#rag-specific-integration-patterns)
 - **Schema sharing (Pydantic → JSON Schema → TS / Java POJO; OpenAPI from FastAPI)** — [P7 § Schema sharing across languages](07_interoperability.md#schema-sharing-across-languages)
