@@ -942,10 +942,13 @@ class SingletonMeta(type):
     _lock = threading.Lock()
 
     def __call__(cls, *args, **kwargs):
-        with cls._lock:                          # double-checked: first lock
-            if cls not in cls._instances:        # then re-check inside
-                cls._instances[cls] = super().__call__(*args, **kwargs)
-            return cls._instances[cls]
+        # Double-checked locking: cheap unlocked read on the hot path,
+        # full lock + re-check only on the cold path.
+        if cls not in cls._instances:
+            with cls._lock:
+                if cls not in cls._instances:    # re-check inside the lock
+                    cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
 
 class Cluster(metaclass=SingletonMeta):
     def __init__(self, host="localhost"):
