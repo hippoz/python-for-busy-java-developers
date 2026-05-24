@@ -147,7 +147,7 @@ Alphabetical. Sub-bullets indicate related/grouped topics. Click through to anch
 - **Producer-consumer (`queue.Queue`/`asyncio.Queue`)** — [P4 § Producer-consumer](04_concurrency.md#producer-consumer)
 - **`Protocol` (structural typing)** — [P3 § Protocol](03_pythonic_idioms.md#protocol)
 - **`pydantic`** — [P6 § Productivity libs](06_ecosystem_and_packaging.md#productivity-libs)
-- **RAG integration patterns (sidecar / shared vector store / streaming / embedding service)** — [P7 § RAG-specific integration patterns](07_interoperability.md#rag-specific-integration-patterns)
+- **RAG integration patterns (Python-as-service / shared vector store / streaming / embedding service)** — [P7 § RAG-specific integration patterns](07_interoperability.md#rag-specific-integration-patterns)
 - **Schema sharing (Pydantic → JSON Schema → TS / Java POJO; OpenAPI from FastAPI)** — [P7 § Schema sharing across languages](07_interoperability.md#schema-sharing-across-languages)
 - **`pydantic-settings`** — [P6 § Settings management](06_ecosystem_and_packaging.md#settings-management)
 - **Python implementations (CPython / PyPy / Jython / GraalPy / IronPython / MicroPython)** — [P1 § Execution model](01_syntax_shock.md#execution-model)
