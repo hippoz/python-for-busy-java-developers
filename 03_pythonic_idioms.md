@@ -148,7 +148,7 @@ print(next(it))   # >>> 30
 # next(it)        # StopIteration
 ```
 
-A `for` loop is really doing this:
+A `while` loop is really doing this:
 
 ```python
 it = iter(iterable)
