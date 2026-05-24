@@ -128,7 +128,7 @@ lst.add("hello")
 | Existing Spark / Py4J ecosystem | Py4J |
 | Legacy Python 2 / Java 8 codebase | Jython (sustaining only) |
 
-> ⚠️ **Pitfall:** In-process bridges share the GIL story. A Python call from Java still acquires the GIL; long-running Python work blocks other JVM threads from calling into Python concurrently. Out-of-process designs avoid this entirely.
+> ⚠️ **Pitfall:** True in-process bridges (JPype, GraalPy, embedded CPython) make the GIL fully visible to the host runtime — a Python call from a JVM thread acquires the GIL, and long-running Python work blocks other JVM threads from calling into Python concurrently. Local socket bridges (Py4J) are no better here: the Python side is still one CPython process with one GIL, so calls from different JVM threads still serialize through it. **Only separate Python services scaled with multiple worker processes (`uvicorn --workers N`, gunicorn, multiple containers) actually parallelize across CPU cores** — and that's an out-of-process design, not a bridge.
 
 ## Python and Node.js
 
