@@ -614,6 +614,27 @@ class InvalidUserInputError(Exception):
     pass
 ```
 
+**Custom exceptions with fields.** Exceptions are just classes — they can carry any state, not only the message. Add fields via `__init__` exactly like any other class:
+
+```python
+class HttpError(Exception):
+    def __init__(self, status_code: int, message: str, headers: dict | None = None):
+        super().__init__(message)            # what str(exc) shows
+        self.status_code = status_code
+        self.headers = headers or {}
+
+try:
+    raise HttpError(503, "service unavailable", headers={"Retry-After": "30"})
+except HttpError as e:
+    print(e.status_code)                     # >>> 503
+    print(e.headers["Retry-After"])          # >>> 30
+    print(e)                                 # >>> service unavailable
+```
+
+> 💡 **Pythonic:** Always pass the human-readable message to `super().__init__(message)` — that's what `str(exc)`, logging, and tracebacks display, and what ends up in `exc.args[0]`. Structured fields (`status_code`, `headers`, anything) go on `self` as plain attributes.
+
+> ☕ **Java parallel:** Same shape as a Java exception subclass with extra fields and `super(message)` in the constructor. The only Python-specific quirk is `exc.args` — a tuple of whatever was passed to `super().__init__(...)`. Most apps just put the message there and access structured fields via the named attributes.
+
 **Chaining causes** (analogous to Java `throw new X(msg, cause)`):
 
 ```python
