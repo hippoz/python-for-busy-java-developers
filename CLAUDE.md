@@ -63,6 +63,13 @@ Reuse the same session-id across rounds for continuity; compress `session.md` be
 - **Anchor IDs are auto-derived.** Header `## File I/O via pathlib` becomes `#file-io-via-pathlib`, NOT `#pathlib`. Either rename the header to match or accept the auto-slug everywhere it's referenced.
 - **Don't claim "double-checked" without writing real DCL.** Outer unlocked check → lock → inner re-check. Lock-then-check is a synchronized bottleneck, not DCL. (Round 7.)
 - **Python conditional `a if c else b` is lazy on the unused branch.** Java `Optional.orElse(d)` is eager only because `d` is an argument (evaluated before the call), not because the conditional is eager. Don't conflate. (Round 9.)
+- **Python `int` has NO machine-int fast path.** Every `int` is a `PyLong` with variable-length digits — small values just use one digit. Don't claim CPython "switches to arbitrary precision when needed"; it was arbitrary-precision the whole time. (Round 10.)
+- **Py4J is a local socket bridge, NOT in-process.** Two CPython processes (Python + JVM) talking via TCP/Unix socket. The JVM-embeds-Python options are GraalPy (Python on JVM) and Jython (Python-as-JVM-bytecode, Py2-stuck). The Python-embeds-JVM option is JPype. Don't lump Py4J with in-process. (Round 10–11.)
+- **GraalPy's GIL is for C-extension compatibility, not "PEP 703 phase-out."** PEP 703 is CPython-specific. GraalPy keeps its GIL waiting on CPython's PEP 703 rollout + ecosystem catch-up. Don't misattribute. (Round 10.)
+- **GIL invisibility ≠ "requests served serially per-process."** A single ASGI worker handles concurrent I/O-bound requests via asyncio just fine; the GIL only blocks parallel Python *bytecode*. Workers (`uvicorn --workers N`) are for CPU-bound parallelism. (Round 15.)
+- **"Every public LLM API uses SSE" is false.** OpenAI and Anthropic chat-completions APIs use SSE for streaming. Gemini uses gRPC streaming. Others vary. Narrow these claims. (Round 10–11.)
+- **Stale-text-after-rename:** when renaming a section (e.g., Sidecar → Python-as-service), `grep -r <old-term>` across all files including `00_index.md`, `docs/plans/COVERAGE_MATRIX.md`, `99_appendix_java_to_python.md`, and Key Takeaways. Each post-Part-7-rename round caught 2-5 lingering refs in places I'd forgotten. (Rounds 11, 13, 14.)
+- **Converge loops take more rounds than expected.** Part 7 needed 7 review rounds to land clean — each fix can introduce or reveal adjacent stale text. Always run a final cross-file `grep` after a significant rename, and budget for multiple verification rounds on non-trivial additions.
 
 ## Out of scope for this repo
 
