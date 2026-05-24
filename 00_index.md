@@ -150,6 +150,7 @@ Alphabetical. Sub-bullets indicate related/grouped topics. Click through to anch
 - **`Protocol` (structural typing)** — [P3 § Protocol](03_pythonic_idioms.md#protocol)
 - **`pydantic`** — [P6 § Productivity libs](06_ecosystem_and_packaging.md#productivity-libs)
 - **RAG integration patterns (Python-as-service / shared vector store / streaming / embedding service)** — [P7 § RAG-specific integration patterns](07_interoperability.md#rag-specific-integration-patterns)
+- **Reactive programming (Reactor/RxJava → asyncio + async iterators; RxPY/aiostream as escape hatch)** — [P4 § Reactive programming](04_concurrency.md#reactive-programming)
 - **Schema sharing (Pydantic → JSON Schema → TS / Java POJO; OpenAPI from FastAPI)** — [P7 § Schema sharing across languages](07_interoperability.md#schema-sharing-across-languages)
 - **`pydantic-settings`** — [P6 § Settings management](06_ecosystem_and_packaging.md#settings-management)
 - **Python implementations (CPython / PyPy / Jython / GraalPy / IronPython / MicroPython)** — [P1 § Execution model](01_syntax_shock.md#execution-model)

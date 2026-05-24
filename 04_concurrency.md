@@ -29,6 +29,7 @@ Goal: pick the right concurrency model for the workload, then know enough of eac
 - [Async-aware logging](#async-aware-logging)
 - [Blocking vs non-blocking I/O](#blocking-vs-non-blocking-io)
 - [Mixing async and threads](#mixing-async-and-threads)
+- [Reactive programming](#reactive-programming)
 - [Concurrency chooser](#concurrency-chooser)
 - [Stdlib modules summary](#stdlib-modules-summary)
 - [Key Takeaways](#key-takeaways)
@@ -833,6 +834,78 @@ async def main():
 Use a custom executor when you need to bound the concurrency of the blocking calls separately from asyncio's default pool.
 
 > 💡 **Pythonic:** Async is not "faster threads." It's a different concurrency model. Mix them deliberately at the boundaries — blocking calls offloaded to threads from async, async tasks scheduled into a loop from threads (`asyncio.run_coroutine_threadsafe`).
+
+## Reactive programming
+
+If you came from **Project Reactor** (Spring WebFlux), **RxJava**, or any reactive-streams stack, this is the section that tells you where `Flux<T>` went. Short answer: Python doesn't have a Reactor analog in the standard library, and most of the use cases that drive you to Reactor on the JVM are covered in Python by **`asyncio` + async iterators + `asyncio.Queue`** — pieces you've already seen in this part.
+
+**Reactor → Python conceptual map:**
+
+| Reactor concept | Python idiom | Notes |
+| :--- | :--- | :--- |
+| `Mono<T>` (0–1 value) | `Awaitable[T]` — usually a `Coroutine` returned by `async def` | `await foo()` is your "subscribe + get the single value." For `Mono.empty()`, use `Awaitable[T | None]` or `Awaitable[None]`. |
+| `Flux<T>` (Reactor) / RxJava `Flowable<T>` (the backpressured one) | `AsyncIterator[T]` / `AsyncGenerator[T, None]` | Consume with `async for x in src:`. RxJava `Observable<T>` is **not** backpressured — only `Flowable` is, which is what maps cleanly here. |
+| `flux.map(f)` | Small async-generator wrapper: `async def mapped(src): async for x in src: yield f(x)` | No fluent chain — compose by passing one generator into the next |
+| `flux.filter(p)` | Same shape, with `if p(x): yield x` | No method chain — just compose generators |
+| `flux.concatMap(f)` (sequential flatten) | Nested `async for`: `async for x in src: async for y in f(x): yield y` | This is **sequential** — one inner stream at a time, in order |
+| `flux.flatMap(f)` (concurrent merge) | `asyncio.TaskGroup` driving inner generators concurrently and feeding a bounded `asyncio.Queue`; or `aiostream.stream.flatmap(..., task_limit=N)` | The nested-`for` shortcut is **wrong** for `flatMap` — `flatMap` interleaves inner publishers with prefetch/concurrency. The Python equivalent has to spawn tasks. |
+| `Mono.zip(a, b, ...)` / `Flux.zip(...)` (combine all) | `asyncio.gather(a, b, ...)` for one-shot fan-in; `aiostream.stream.ziplatest` for stream-of-streams | `gather` raises on first exception unless `return_exceptions=True` |
+| `Flux.merge(...)` (interleave as values arrive) | `asyncio.as_completed(...)` for futures; `aiostream.stream.merge(...)` for async iterables | Stdlib has no built-in async-iterable merge |
+| `onErrorResume(fn)` / `onErrorReturn(v)` / `retry(n)` / `retryWhen(...)` | `try / except` inside the consumer loop; `tenacity.retry` decorator on the operation; or just `for attempt in tenacity.Retrying(...):` | No fluent error operators — error handling is structured, not chained. See [Cancellation and timeouts](#cancellation-and-timeouts) for `asyncio.timeout` and [Part 6 § HTTP production behavior](06_ecosystem_and_packaging.md#http-production-behavior) for `tenacity` patterns. |
+| `subscribeOn(boundedElastic())` (run the source on a thread pool) | `asyncio.to_thread(...)` / `loop.run_in_executor(...)` to push the blocking step off the event loop | See [Mixing async and threads](#mixing-async-and-threads) |
+| `publishOn(parallel())` (hop downstream operators to another thread) | **No direct equivalent** — Python has one event loop per thread, so "hop the rest of the pipeline to another thread" isn't a thing. If a single pipeline step is CPU- or block-heavy, wrap *that step* in `asyncio.to_thread` / `run_in_executor`. | Don't try to translate `publishOn` 1:1 — the Python model is "stay on the loop except where you have to leave." |
+| Reactive backpressure (`request(n)` signals, prefetch buffers) | Pull-based `async for` is naturally backpressured (one item per `__anext__`); bounded `asyncio.Queue(maxsize=N)` for buffered/decoupled pipelines | No `request(n)` protocol — the consumer's `__anext__` call **is** the demand signal. Note Reactor also lets you tune prefetch and choose `onBackpressureBuffer`/`Drop`/`Latest`; the Python equivalent is choosing your `Queue` policy (size, full-handling) explicitly. |
+| Hot vs cold streams | Async generators are **cold** (a fresh stream per consumer); for hot/multicast, run a producer task that fans out into one `asyncio.Queue` per consumer | Stdlib has no built-in multicast. `asyncio.Event` is a 1-bit flag with no payload — useful for "ready yet?" signals, not for delivering values to multiple consumers. |
+| Schedulers (`Schedulers.parallel()`, `boundedElastic()`) | The event loop itself (cooperative scheduling of coroutines) + an executor pool for blocking work | One loop per thread; no first-class scheduler abstraction per-operator |
+| `flux.window(...)` / `buffer(...)` / `debounce(...)` | Hand-rolled with `asyncio.sleep` + accumulators, or reach for `aiostream` | Stdlib doesn't ship operator combinators |
+
+**A minimal "Flux pipeline" in Python** — three async generators composed by iteration, no operator chain:
+
+```python
+import asyncio
+
+async def numbers(n):                           # source: Flux<Integer>
+    for i in range(n):
+        await asyncio.sleep(0.01)               # simulate I/O
+        yield i
+
+async def squared(src):                         # operator: map
+    async for x in src:
+        yield x * x
+
+async def even_only(src):                       # operator: filter
+    async for x in src:
+        if x % 2 == 0:
+            yield x
+
+async def main():
+    pipeline = even_only(squared(numbers(10)))  # compose by nesting
+    async for value in pipeline:
+        print(value)
+
+asyncio.run(main())
+# >>> 0
+# >>> 4
+# >>> 16
+# >>> 36
+# >>> 64
+```
+
+Each `async for` step both consumes and produces — that's the backpressure. The `numbers` generator only advances when `squared` calls `__anext__`, which only happens when `even_only` calls `__anext__`, which only happens when `main` iterates. There's no buffered demand signal because there's no buffer.
+
+**Libraries exist for operator-chain syntax, but they aren't idiomatic.** If you genuinely need Rx-style operators in Python:
+
+- **[`RxPY`](https://github.com/ReactiveX/RxPY)** — the official ReactiveX port. Closest to RxJava `Observable` syntax. Niche, and **not a Reactive-Streams backpressure equivalent** — RxPY 3.x dropped built-in backpressure support. Reach for it for operator-chain ergonomics, not for `Flowable`/`Flux`-style flow control.
+- **[`aiostream`](https://github.com/vxgmichel/aiostream)** — operator combinators (`map`, `filter`, `merge`, `zip`, `chunks`, `timeout`) over `asyncio` streams. The most "Pythonic" of the reactive-style libraries.
+- **[`streamz`](https://streamz.readthedocs.io/)** — data-pipeline focused, integrates with pandas/Dask.
+
+Most Python codebases don't reach for these — they compose async generators and `asyncio.Queue` directly.
+
+> ⚠️ **Pitfall:** Don't import `aiostream`/`RxPY` just to recreate the fluent operator-chain mental model. The Python way is to compose by `async for` and small async-generator helpers, not by stringing `.map(...).filter(...).window(...)` together. Reaching for the chain syntax fights the language and isolates your code from idiomatic readers — keep that escape hatch for cases where the operators themselves (sliding windows, debounce, time-based batching) are actually what you need, not the syntax.
+
+> ☕ **Java parallel:** Reactor's value proposition on the JVM is partly *concurrency* (composing async work without callback hell) and partly a *programming model* (declarative, operator-driven, with backpressure semantics). Python solved the first half with `async`/`await` — you get the composition without needing a stream type. The second half (operators, schedulers, multicast) lives in third-party libraries when you need it, but most teams find they don't.
+
+**Cross-refs:** [Part 3 § Generators](03_pythonic_idioms.md#generators) (cold pull-based streams via `yield`), [Part 3 § Iterable vs iterator](03_pythonic_idioms.md#iterable-vs-iterator) (sync version of the same protocol), [Part 7 § RAG-specific integration patterns](07_interoperability.md#rag-specific-integration-patterns) (streaming LLM responses across services).
 
 ## Concurrency chooser
 

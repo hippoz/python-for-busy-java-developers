@@ -146,6 +146,15 @@ For full treatment, follow the link in each row.
 | `ThreadLocal<T>` | `contextvars.ContextVar` (works with async; `threading.local` doesn't) | [Part 4 § contextvars](04_concurrency.md#contextvars) |
 | `try-with-resources` | `with` (sync) / `async with` (coroutines) | [Part 3 § context-managers](03_pythonic_idioms.md#context-managers) |
 | `Thread.interrupt()` | `Task.cancel()` + cooperative cancellation | [Part 4 § cancellation-and-timeouts](04_concurrency.md#cancellation-and-timeouts) |
+| `Mono<T>` (Reactor) | `Awaitable[T]` — usually a `Coroutine` from `async def` + `await` | [Part 4 § reactive-programming](04_concurrency.md#reactive-programming) |
+| `Flux<T>` (Reactor) / RxJava `Flowable<T>` (the backpressured one) | `AsyncIterator[T]` / `AsyncGenerator[T, None]` — consumed with `async for` | [Part 4 § reactive-programming](04_concurrency.md#reactive-programming) |
+| Reactor `flux.map` / `filter` / `concatMap` (sequential) | Compose async generators with `async for`; no fluent chain in stdlib | [Part 4 § reactive-programming](04_concurrency.md#reactive-programming) |
+| Reactor `flux.flatMap` (concurrent merge) | `asyncio.TaskGroup` driving inner generators concurrently into an `asyncio.Queue` (or `aiostream.stream.flatmap`) — **not** nested `async for`, which is sequential | [Part 4 § reactive-programming](04_concurrency.md#reactive-programming) |
+| Reactor `Mono.zip` / `Flux.zip` / `Flux.merge` | `asyncio.gather` (zip-style fan-in), `asyncio.as_completed` (merge-style interleave), `aiostream.stream.merge` for async iterables | [Part 4 § reactive-programming](04_concurrency.md#reactive-programming) |
+| Reactor `onErrorResume` / `retry` / `retryWhen` | Native `try/except` inside the consumer loop; `tenacity.retry` for declarative retries | [Part 4 § reactive-programming](04_concurrency.md#reactive-programming) |
+| Reactor backpressure (`request(n)`, prefetch, `onBackpressureBuffer/Drop/Latest`) | Pull-based `async for` is naturally backpressured; bounded `asyncio.Queue(maxsize=N)` with explicit full-handling policy | [Part 4 § reactive-programming](04_concurrency.md#reactive-programming) |
+| Reactor `subscribeOn(boundedElastic())` | `asyncio.to_thread` / `loop.run_in_executor` | [Part 4 § mixing-async-and-threads](04_concurrency.md#mixing-async-and-threads) |
+| Reactor `publishOn(parallel())` | **No 1:1 equivalent** — Python has one event loop per thread. Wrap the specific blocking/CPU-heavy step in `asyncio.to_thread` instead of "hopping the rest of the pipeline." | [Part 4 § reactive-programming](04_concurrency.md#reactive-programming) |
 
 > ⚠️ **Caveat on `CountDownLatch` → `Event`:** `Event` is a 1-bit flag — fine for "is the system ready yet?" (`CountDownLatch(1)`). For real countdown of N tasks, use `Barrier(N)` (all parties wait until the last arrives — best when the waiters *are* the counting parties) or an integer counter protected by `Condition` (best when watchers and counters are different threads). Don't pretend `Event` covers the general case.
 

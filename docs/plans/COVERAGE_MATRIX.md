@@ -222,6 +222,7 @@ Old files are deleted only after Phase 3 verifies this matrix accounts for every
 | `pyproject.toml` | `06#pyproject` | Q6 medium |
 | Duck typing (concept + EAFP + Mock as duck-typed test double + pitfalls) | `03#duck-typing` | User-requested — Java has no language-level equivalent; pairs with existing Protocol section as the runtime/static-checked split |
 | Exception hierarchy (`BaseException` vs `Exception`, why bare `except:` swallows Ctrl-C) | `01#exception-handling` (subsection: `### Exception hierarchy`) | User-asked — common Java-dev gotcha when migrating; clarifies what to catch and what to subclass |
+| Reactive programming (Reactor/RxJava → Python concept map + async-generator pipeline + library escape hatches RxPY/aiostream/streamz) | `04#reactive-programming` | User-asked — Spring WebFlux/Reactor devs will look for Flux equivalent; section answers "where's my Flux" by mapping to asyncio + async iterators and explicitly flagging Rx-style libraries as non-idiomatic |
 
 ---
 
