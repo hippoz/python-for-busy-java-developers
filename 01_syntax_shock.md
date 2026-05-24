@@ -636,6 +636,34 @@ finally:
 
 The `else` runs only when no exception was raised — useful for code that should run on success but should not be guarded by the same `except`.
 
+**Catching multiple exception types** — pass a **tuple** to `except`; one block handles any of them:
+
+```python
+try:
+    value = int(user_input)
+    result = 100 / value
+except (ValueError, ZeroDivisionError) as e:
+    print(f"Bad input: {e}")
+```
+
+The parentheses are required — `except ValueError, ZeroDivisionError:` (no parens) is a syntax error in Python 3. The `as e` clause is optional; use it when you need the exception object.
+
+You can also stack distinct `except` clauses when each type needs different handling:
+
+```python
+try:
+    payload = json.loads(raw)
+except json.JSONDecodeError:
+    log.warning("malformed json, skipping")
+except OSError as e:
+    log.error("io failure: %s", e)
+    raise
+```
+
+Clauses are tried top-to-bottom; the first matching type wins. Order from **most specific to most general** — `except Exception:` at the top would shadow everything below it.
+
+> ☕ **Java parallel:** Python's `except (A, B):` is Java's `catch (A | B e)` (multi-catch, Java 7+). Stacked `except` clauses are stacked `catch` blocks. Same precedence rule: most specific first.
+
 **Raising and custom exceptions:**
 
 ```python
