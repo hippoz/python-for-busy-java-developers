@@ -297,7 +297,7 @@ Token-by-token output keeps latency feel low. Use **SSE** (covered above) — wh
 
 ### 4. Embedding model as a separate service
 
-When multiple RAG services share the same embedding model, host it once (in Python with `sentence-transformers` or behind an inference server like Triton/vLLM/TGI) and let each RAG service call it. Same shape as the sidecar pattern, one layer down.
+When multiple RAG services share the same embedding model, host it once (in Python with `sentence-transformers` or behind an inference server like Triton/vLLM/TGI) and let each RAG service call it. Same shape as the [Python-as-service](#1-python-as-service-most-common) pattern, one layer down — typically deployed as its own **separate service** so independent RAG services can share it.
 
 ### 5. Schema sharing
 

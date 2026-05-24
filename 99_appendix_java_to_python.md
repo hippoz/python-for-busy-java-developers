@@ -249,7 +249,8 @@ For full treatment, follow the link in each row.
 | Default cross-language boundary | HTTP/REST (FastAPI server) | [Part 7 § Choosing an interop pattern](07_interoperability.md#choosing-an-interop-pattern) |
 | Typed RPC across languages | gRPC with shared `.proto` (Python via `grpcio-tools`) | [Part 7 § Python and Java](07_interoperability.md#python-and-java) |
 | Java calling a Python service | HTTP (`HttpClient` / OkHttp / `WebClient`) → FastAPI | [Part 7 § Python and Java](07_interoperability.md#python-and-java) |
-| Embed Python inside JVM app | **GraalPy** (modern, Py3) or **Py4J** (PySpark mechanism); avoid Jython (Py2-stuck) | [Part 7 § Python and Java](07_interoperability.md#python-and-java) |
+| True embedded Python inside JVM | **GraalPy** (modern, Py3 on GraalVM); Jython is Py2-stuck (legacy only) | [Part 7 § Python and Java](07_interoperability.md#python-and-java) |
+| Local JVM ↔ Python over socket (PySpark mechanism) | **Py4J** — two processes, faster than HTTP, NOT in-process | [Part 7 § Python and Java](07_interoperability.md#python-and-java) |
 | Call Java from Python | **JPype** (loads JVM into Python process) or **Py4J** | [Part 7 § Python and Java](07_interoperability.md#python-and-java) |
 | Node.js calling a Python service | HTTP/REST or gRPC (same shape as Java) | [Part 7 § Python and Node.js](07_interoperability.md#python-and-nodejs) |
 | Streaming LLM tokens to browser | **Server-Sent Events** (FastAPI `StreamingResponse`) | [Part 7 § Python and Node.js](07_interoperability.md#python-and-nodejs) |
