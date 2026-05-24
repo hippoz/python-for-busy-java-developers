@@ -1,0 +1,65 @@
+name: Publish docs site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Grant the workflow the permissions GitHub Pages deployment needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, but don't cancel in-progress runs —
+# we want each push to actually finish publishing before the next starts.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # mkdocs-material's git-revision plugin (if enabled later) needs history
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install MkDocs Material
+        run: pip install "mkdocs-material==9.5.*" "pymdown-extensions>=10.7"
+
+      - name: Stage docs for MkDocs
+        # MkDocs won't accept the repo root as docs_dir, so symlink the prose
+        # files into site_src/. 00_index.md is staged as index.md so it
+        # renders at the site root (/) instead of /00_index/.
+        run: |
+          mkdir -p site_src
+          ln -sf ../00_index.md site_src/index.md
+          for f in 01_*.md 02_*.md 03_*.md 04_*.md 05_*.md 06_*.md 07_*.md 99_appendix_java_to_python.md; do
+            ln -sf "../$f" "site_src/$f"
+          done
+          ls -la site_src/
+
+      - name: Build site
+        run: mkdocs build --strict
+        # --strict makes the build fail on broken internal links or unrecognised config,
+        # so a doc edit that breaks a cross-ref blocks the deploy instead of shipping a 404.
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

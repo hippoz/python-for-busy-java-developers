@@ -1,0 +1,7 @@
+# MkDocs build artefacts
+/site/
+/site_src/
+
+# Local OS / editor cruft
+.DS_Store
+*.swp

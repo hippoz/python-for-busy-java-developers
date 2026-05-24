@@ -1,0 +1,89 @@
+site_name: Python for Busy Java Developers
+site_description: A 6-part guide for Java developers learning Python — syntax, idioms, concurrency, stdlib, ecosystem, and interop.
+site_url: https://hippoz.github.io/python-for-busy-java-developers/
+repo_url: https://github.com/hippoz/python-for-busy-java-developers
+repo_name: hippoz/python-for-busy-java-developers
+# `edit_uri` is intentionally unset: the homepage is a symlink (site_src/index.md →
+# ../00_index.md), so MkDocs would generate a broken edit/main/index.md link for it.
+# Readers can still reach the repo via the GitHub icon in the header.
+
+# MkDocs refuses to use the repo root as docs_dir. The build step symlinks the
+# root .md files into site_src/ before invoking `mkdocs build`. See README/Makefile
+# or the publish-docs workflow for the staging recipe.
+docs_dir: site_src
+site_dir: site
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - navigation.indexes
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  # 00_index.md is staged as index.md by the build pipeline so it serves as the
+  # site root. See the publish-docs workflow for the staging step.
+  - Home: index.md
+  - Part 1 — Syntax Shock: 01_syntax_shock.md
+  - Part 2 — Java Idiom Translation: 02_java_idiom_translation.md
+  - Part 3 — Pythonic Idioms: 03_pythonic_idioms.md
+  - Part 4 — Concurrency: 04_concurrency.md
+  - Part 5 — Standard Library: 05_standard_library.md
+  - Part 6 — Ecosystem and Packaging: 06_ecosystem_and_packaging.md
+  - Part 7 — Interoperability: 07_interoperability.md
+  - Appendix — Java → Python: 99_appendix_java_to_python.md
+
+# Slugify is pinned to pymdownx's GitHub-compatible algorithm so anchors in the
+# rendered site match the `01_foo.md#bar` cross-references already used in the docs.
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+plugins:
+  - search
