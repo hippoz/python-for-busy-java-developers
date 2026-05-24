@@ -14,6 +14,7 @@ Goal: integrate a Python service (typically an AI/ML or RAG system) with code in
 - [Python and Node.js](#python-and-nodejs)
 - [Python and C and C++](#python-and-c-and-c)
 - [RAG-specific integration patterns](#rag-specific-integration-patterns)
+- [Production concerns](#production-concerns)
 - [Schema sharing across languages](#schema-sharing-across-languages)
 - [Pitfalls](#pitfalls)
 - [Key Takeaways](#key-takeaways)
@@ -35,8 +36,8 @@ If you can avoid in-process interop, do. **Out-of-process boundaries (HTTP, gRPC
 | Workload | Recommended pattern | Why |
 | :--- | :--- | :--- |
 | Request/response, low-to-moderate volume | **HTTP/REST** (FastAPI server) | Universal client support, easy debugging, observability stacks already exist |
-| Request/response, typed contract + lower latency | **gRPC** with a shared `.proto` | Typed end-to-end, ~5-10× faster than REST, streaming built in |
-| Streaming LLM tokens to a browser | **HTTP + SSE** (Server-Sent Events) | Native browser support, what OpenAI/Anthropic APIs use |
+| Request/response, typed contract + efficient framing | **gRPC** with a shared `.proto` | Typed end-to-end, binary framing, first-class bidirectional streaming. Wire efficiency rarely dominates RAG latency (model + retrieval do), so pick gRPC for the contract and streaming, not the speedup. |
+| Streaming LLM tokens to a browser | **HTTP + SSE** (Server-Sent Events) | Native browser support, what OpenAI and Anthropic chat-completions APIs use |
 | Bidirectional streaming | **WebSocket** | Browser support, both directions |
 | Fire-and-forget / async fanout | **Message queue** (Kafka, RabbitMQ, Redis Streams) | Decouples producer from consumer; good for ML inference fanout |
 | Co-located JVM + Python, frequent calls | **Py4J** or **GraalPy** | In-process latency; only worth it if HTTP is genuinely the bottleneck |
@@ -86,21 +87,21 @@ HttpResponse<String> resp = client.send(req, BodyHandlers.ofString());
 
 **Message queue (Kafka / RabbitMQ / Redis Streams)** — decouples producer from consumer, persists messages, scales horizontally. The right answer when ML inference fanout shouldn't block the caller.
 
-### In-process bridges
+### Tighter coupling: local IPC and in-process bridges
 
-When the HTTP hop is genuinely the bottleneck or you need to share JVM state (e.g., extending a Spark job), there are real options:
+When the HTTP hop is genuinely the bottleneck or you need to share JVM state (e.g., extending a Spark job), there are tighter options. They come in two flavors — **local socket bridges** (still two processes, but no network) and **true in-process** (single OS process):
 
-**Py4J** — bidirectional Java↔Python bridge over a local socket. The mechanism behind **PySpark**. JVM stays running; Python calls Java methods and vice versa. Production-grade if you accept the operational complexity.
+**Py4J — local socket bridge.** Java and Python run as **two separate processes** that talk over a local TCP/Unix socket. The Java side runs a `GatewayServer`; the Python side connects to it. This is the mechanism behind **PySpark** (driver-side communication with the JVM). Faster than HTTP, but it is NOT in-process — and that means the same deployment-complexity issues apply (start order, port management, two health checks).
 
 ```python
-# Python side
+# Python side — connects to a Java GatewayServer already started
 from py4j.java_gateway import JavaGateway
 gateway = JavaGateway()
 java_random = gateway.jvm.java.util.Random()
 print(java_random.nextInt(100))
 ```
 
-**JPype** — Python calls Java (one-direction, easier than Py4J for "just use this Java library from Python"). Loads the JVM into the Python process via JNI.
+**JPype — true in-process (Python hosts the JVM).** Python calls Java; the JVM is loaded into the Python process via JNI. Easier than Py4J for "just use this Java library from Python." Single process, single deploy.
 
 ```python
 import jpype, jpype.imports
@@ -110,9 +111,11 @@ lst = ArrayList()
 lst.add("hello")
 ```
 
-**GraalPy** — run Python 3 inside the JVM on GraalVM. Python and Java share the same runtime; calls are essentially free. The 2026 answer for "Python plus Java in one process" — see [Part 1 § Execution model](01_syntax_shock.md#execution-model) for the implementation context.
+**GraalPy — true in-process (JVM hosts Python on GraalVM).** Python 3 runs inside the JVM on GraalVM. Python and Java share the same runtime, so calls avoid network and process boundaries — but there is still a real cost for type conversion and the language interop layer (not "essentially free"). The 2026 answer for "Python plus Java in one process" — see [Part 1 § Execution model](01_syntax_shock.md#execution-model) for the implementation context.
 
-**Jython** — runs Python *as* JVM bytecode with native Java interop. The original answer to this problem, but **stuck on Python 2.x**; Jython 3 has been in slow development for years. Don't pick it for new work.
+**Jython — true in-process, legacy only.** Runs Python *as* JVM bytecode with native Java interop. Was the original answer to this problem, but **stuck on Python 2.7**; Jython 3 has been in slow development for years. Don't pick it for new work.
+
+> ⚠️ **Pitfall (operational, often missed):** All four options above need a configured Python environment present at runtime — typically a `venv` containing your pinned third-party packages (NumPy, transformers, your application's Python deps). Java teams expect "the JVM just runs the script" and discover at deploy time that they also have to ship a Python environment alongside the JAR. Plan for two dependency-resolution stories, two reproducibility stories, and (for containers) a larger image. This pain is real and is the single biggest reason HTTP/REST often wins over in-process bridges in production.
 
 ### When to pick which
 
@@ -137,11 +140,14 @@ Same shape as Java: FastAPI server, Node client using `fetch` (Node 18+) or `axi
 
 Two web-standard options for streaming LLM tokens from a Python backend to a browser or Node frontend:
 
-**Server-Sent Events (SSE)** — HTTP-based, one-way server→client, native browser support via `EventSource`. The protocol OpenAI and Anthropic use for streaming chat completions. FastAPI's `StreamingResponse` covers it:
+**Server-Sent Events (SSE)** — HTTP-based, one-way server→client, native browser support via `EventSource`. The protocol that OpenAI and Anthropic chat-completions APIs use for streaming (other providers vary — Gemini uses gRPC streaming, some use WebSocket; SSE is the most common HTTP-friendly choice). FastAPI's `StreamingResponse` covers it:
 
 ```python
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
+
+app = FastAPI()
+# llm is your model wrapper exposing .stream(prompt) -> Iterable[str]
 
 @app.get("/stream")
 def stream():
@@ -169,7 +175,7 @@ const py = spawn("python", ["script.py", "arg1"]);
 py.stdout.on("data", (chunk) => process.stdout.write(chunk));
 ```
 
-The npm package **`python-shell`** is a higher-level wrapper around this. Use it for build steps and one-off scripts, not for hot request paths (process spawn cost is ~50–200 ms).
+The npm package **`python-shell`** is a higher-level wrapper around this. Use it for build steps and one-off scripts, not for hot request paths — process spawn cost is ~50 ms for a bare script, but routinely 1–2+ seconds when the script imports heavyweight libraries (`pandas`, `torch`, `transformers`). For per-request hot paths, run Python as a long-lived service.
 
 ### Pyodide — Python in the browser
 
@@ -178,7 +184,8 @@ The npm package **`python-shell`** is a higher-level wrapper around this. Use it
 For RAG demos and educational tools, Pyodide lets you ship a working Python ML demo as a static site. For production RAG, the model and vector index are usually too large for the client — use Pyodide for UI-side prep and call out to a server for the heavy lifting.
 
 ```html
-<script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+<!-- Always pin to a current Pyodide version from https://pyodide.org/en/stable/ -->
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.x/full/pyodide.js"></script>
 <script>
   const pyodide = await loadPyodide();
   await pyodide.loadPackage("numpy");
@@ -187,7 +194,7 @@ For RAG demos and educational tools, Pyodide lets you ship a working Python ML d
 </script>
 ```
 
-> ⚠️ **Pitfall:** Pyodide's startup cost (download + WASM compile) is several MB and ~1–3 seconds even on fast connections. Acceptable for tools and notebooks; usually wrong for transactional UI flows.
+> ⚠️ **Pitfall:** Pyodide's startup cost (download + WASM compile + package fetches) is several MB and typically takes a few seconds; how many depends heavily on network, device, and which packages you load (NumPy alone is fast; PyTorch is much heavier). Acceptable for tools and notebooks; usually wrong for transactional UI flows.
 
 ## Python and C and C++
 
@@ -199,7 +206,11 @@ The "performance escape hatch" — Python is too slow for the inner loop, so you
 
 ```python
 import ctypes
-libm = ctypes.CDLL("libm.so.6")
+import ctypes.util
+
+# Cross-platform: find_library returns the right name per OS
+# (libm.so.6 on Linux, libSystem.dylib on macOS, msvcrt-related on Windows)
+libm = ctypes.CDLL(ctypes.util.find_library("m"))
 libm.sqrt.argtypes = [ctypes.c_double]
 libm.sqrt.restype = ctypes.c_double
 print(libm.sqrt(2.0))    # >>> 1.4142135623730951
@@ -246,9 +257,9 @@ For Java/Node calling Python, embedding CPython directly is almost never the rig
 
 The practical payoff of this part. RAG = Retrieval-Augmented Generation. A Python service typically owns the embedding model, vector index, and LLM call; other languages consume it. Patterns ordered by how common they are in production:
 
-### 1. Sidecar pattern (most common)
+### 1. Python-as-service (most common)
 
-Python container behind HTTP/gRPC; non-Python frontend or service calls it. Deploy them as separate containers in the same pod (Kubernetes sidecar), separate services, or separate processes on the same host.
+The Python RAG service runs behind HTTP/gRPC; the non-Python frontend or backend calls it. Three deployment variants of this pattern, each with different failure/rollback/observability properties:
 
 ```
 ┌─────────────┐         ┌──────────────────┐         ┌──────────────┐
@@ -257,7 +268,13 @@ Python container behind HTTP/gRPC; non-Python frontend or service calls it. Depl
 └─────────────┘         └──────────────────┘         └──────────────┘
 ```
 
-Loose coupling. Independent deploys. Each language uses its native tooling. Almost always the right answer for new services.
+| Variant | Topology | Tradeoffs |
+| :--- | :--- | :--- |
+| **Separate service** | Python service owns its own pod / VM / load balancer; independent scaling | Cleanest failure isolation. Independent deploys. The dominant production shape. |
+| **Sidecar (Kubernetes)** | Python container shares a pod with the consumer (same lifecycle, `localhost` loop) | Tight latency, shared deploy. Use when call rate is high enough that an extra hop matters. Sidecar and host are deployed and scaled together. |
+| **Same-host process** | Both processes on the same VM, talking via `localhost` | Simplest for monoliths and dev environments. Couples the two for deploys and ops. Rare in greenfield. |
+
+For new RAG services, default to **separate service**. Move to **sidecar** if measured per-call overhead actually matters. Same-host is for legacy / dev only.
 
 ### 2. Shared vector store (Python isn't on the read path)
 
@@ -286,6 +303,53 @@ When multiple RAG services share the same embedding model, host it once (in Pyth
 
 Pydantic models in Python → JSON Schema → typed clients in other languages. Covered in the next section.
 
+## Production concerns
+
+A Java service owner integrating with a Python RAG service will hit all of these on day one. Most are stack-agnostic, but the Python equivalents are worth naming.
+
+### Timeouts (both sides)
+
+- **Python service side:** every external call (LLM provider, vector store, embedding API) needs an explicit timeout. `httpx.Client(timeout=10)` ([P6 § HTTP production behavior](06_ecosystem_and_packaging.md#http-production-behavior)). `asyncio.timeout(...)` for the entire request handler ([P4 § Cancellation and timeouts](04_concurrency.md#cancellation-and-timeouts)).
+- **Java client side:** never call into a Python RAG service without a timeout. RAG p99 latency is dominated by LLM call time, not your local code — set timeouts generous enough to accommodate the upstream tail, but bounded.
+
+### Retries and idempotency
+
+LLM and vector-store calls are flaky enough that retries are routine. Use **`tenacity`** on the Python side ([P6 § HTTP production behavior](06_ecosystem_and_packaging.md#http-production-behavior)) — exponential backoff with jitter, retry only on specific exceptions, cap attempts. Make RAG endpoints **idempotent** (same request → same response within a short window) so clients can safely retry; usually achieved by deterministic seeds for the LLM and stable embedding output for the query.
+
+### Circuit breakers and backpressure
+
+When the LLM provider is degraded, opening a circuit beats stacking retries that all time out. Python doesn't have a Hystrix-equivalent dominant library; common choices are **`pybreaker`** (decorator-based, simple) or **`purgatory`**. For streaming responses (SSE / WebSocket), watch for slow consumers — if the client can't keep up with token emission, the server's queue grows. Bound the queue, drop or apply backpressure when full.
+
+### Request IDs, distributed tracing, structured logs
+
+Propagate a request ID end-to-end so a single user query can be traced across Java caller → Python RAG service → LLM provider → vector store. The Python pattern: store the request ID in a `contextvars.ContextVar`, inject it into every log line via a `logging.Filter`, and forward it as an HTTP header (`X-Request-ID` or `traceparent`) on every outbound call. Full pattern in [Part 4 § Async-aware logging](04_concurrency.md#async-aware-logging). For real distributed tracing (spans, parent links, sampling), use **OpenTelemetry** (`opentelemetry-instrumentation-fastapi`, `opentelemetry-instrumentation-httpx`) — same OTel ecosystem your Java services already use.
+
+### Auth at the boundary
+
+API key in a header is the cheapest. JWT (`PyJWT`) when the client identity matters ([P6 § Auth and security](06_ecosystem_and_packaging.md#auth-and-security)). mTLS for service-to-service inside a controlled network. Don't put a Python RAG service on the public internet without one of these — every LLM-backed endpoint is a potential exfiltration channel for prompt-injection-driven data leaks.
+
+### Rate limiting
+
+Throttle clients at the gateway (API gateway, ingress controller, sidecar proxy) — not inside the Python service. Python libraries like **`slowapi`** work for in-process limits, but a gateway-side rate-limit survives a Python service restart and protects against fanout from one tenant.
+
+### Schema versioning
+
+When the request/response contract changes, clients need a migration window. Two common patterns:
+- **URL versioning** — `/v1/search`, `/v2/search`. Cheap and visible.
+- **Header versioning** — `Accept: application/vnd.myapp.v2+json`. Cleaner URLs, harder to debug.
+
+Pick one and stick with it. Deprecate old versions with a long sunset (months), not a short one (weeks).
+
+### Batching inference requests
+
+GPU inference is much more efficient at batch size > 1. If multiple concurrent requests hit your Python service within a small window, group them into one model call. Libraries that do this for you: **vLLM**, **TGI** (text-generation-inference), **Triton**. For embeddings, FastAPI background tasks + a small queue can implement micro-batching in your service directly.
+
+### Cancellation propagation
+
+When the Java client gives up (timeout, user closed the page), the Python service should stop the in-flight LLM call too — that's the difference between paying for one cancelled token vs paying for the full generation. With `asyncio`, the request task is cancelled when the client disconnects; coroutines must honor it. Avoid blocking calls inside `async def` that ignore cancellation. See [P4 § Cancellation and timeouts](04_concurrency.md#cancellation-and-timeouts).
+
+> ☕ **Java parallel:** All of these have direct Spring / Resilience4j / Micrometer / OpenTelemetry analogs. The Python ecosystem is fragmented — there's no single Spring-Cloud-equivalent. You assemble: `httpx` + `tenacity` + `pybreaker` + `contextvars` + `slowapi` + `opentelemetry-instrumentation`. See [Appendix § Auth and security](99_appendix_java_to_python.md#auth-and-security) for the "no Spring Security analog" framing — same shape applies to resilience tooling.
+
 ## Schema sharing across languages
 
 The RAG service has request/response types: `Query`, `Hit`, `Citation`, etc. Defining them three times (Python, TypeScript, Java) and keeping them in sync is a tax. Three ways to share:
@@ -313,7 +377,7 @@ print(json.dumps(Query.model_json_schema(), indent=2))
 
 **3. OpenAPI (Swagger).** FastAPI auto-generates an OpenAPI document from your route signatures + Pydantic models. From OpenAPI, every language has a code generator (`openapi-generator-cli` covers 50+ targets). The 2026 default for REST APIs with multi-language clients.
 
-> 💡 **Pythonic:** If you're using FastAPI, you're already publishing OpenAPI for free at `/openapi.json`. Point your TypeScript / Java client generators at that endpoint and the contract stays in sync automatically. This is the smallest-overhead path to typed clients in multiple languages.
+> 💡 **Pythonic:** If you're using FastAPI, you're already publishing OpenAPI for free — by default at `/openapi.json` (configurable via `openapi_url`). Point your TypeScript / Java client generators at that endpoint and the contract stays in sync automatically. This is the smallest-overhead path to typed clients in multiple languages.
 
 ## Pitfalls
 
@@ -339,4 +403,5 @@ A handful of cross-language traps to know:
 - **Pickle is Python-only and unsafe** across the network — JSON for text, Protobuf / Arrow / Parquet for binary.
 - **Large integers don't round-trip through JSON** to JavaScript safely — use strings or Protobuf `int64`.
 - **OpenAPI from FastAPI is free** — generate typed clients in every other language from it; single source of truth.
-- **Sidecar pattern** (Python container behind HTTP, polyglot frontend) is the dominant production RAG architecture.
+- **Python-as-service** (Python container behind HTTP, polyglot frontend) is the dominant production RAG architecture — default to a **separate service**, escalate to Kubernetes **sidecar** only when call rate justifies it.
+- **Production concerns** (timeouts on both sides, retries with `tenacity`, circuit breakers, request-ID via `contextvars` + `logging.Filter`, OpenTelemetry, auth, rate-limit-at-gateway, schema versioning, inference batching, cancellation) are stack-agnostic — the Python parts assemble from `httpx` + `tenacity` + `pybreaker` + `opentelemetry-instrumentation`.

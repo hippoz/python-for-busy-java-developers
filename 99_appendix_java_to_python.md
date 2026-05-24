@@ -261,8 +261,10 @@ For full treatment, follow the link in each row.
 | Schema source of truth across languages | Pydantic → JSON Schema → TS/Java POJO; or OpenAPI from FastAPI | [Part 7 § Schema sharing across languages](07_interoperability.md#schema-sharing-across-languages) |
 | Cross-language large-int round-trip | Use **string** representation (JSON numbers ≠ JS BigInt safe) or Protobuf `int64` | [Part 7 § Pitfalls](07_interoperability.md#pitfalls) |
 | Cross-language binary data exchange | **Protobuf** / **Arrow** / **Parquet** — NOT `pickle` | [Part 7 § Pitfalls](07_interoperability.md#pitfalls) |
-| RAG / ML service shape (production default) | Sidecar pattern — Python container behind HTTP/gRPC; polyglot frontend | [Part 7 § RAG-specific integration patterns](07_interoperability.md#rag-specific-integration-patterns) |
-| Indexing in Python, queries from anywhere | Vector store with native clients per language (Pinecone / Weaviate / Qdrant / pgvector / Milvus) | [Part 7 § RAG-specific integration patterns](07_interoperability.md#rag-specific-integration-patterns) |
+| RAG / ML service shape (production default) | Python-as-service: separate service (default) / sidecar (when call rate justifies it) / same-host (legacy or dev) | [Part 7 § RAG-specific integration patterns](07_interoperability.md#rag-specific-integration-patterns) |
+| Indexing in Python, queries from anywhere | Vector store with native clients per language (Pinecone / Weaviate / Qdrant / pgvector / Milvus — coverage varies; verify your language has an official client) | [Part 7 § RAG-specific integration patterns](07_interoperability.md#rag-specific-integration-patterns) |
+| Spring Cloud / Resilience4j / Micrometer / OpenTelemetry stack | `httpx` + `tenacity` + `pybreaker` + `slowapi` + `opentelemetry-instrumentation-*` (assembled, not unified) | [Part 7 § Production concerns](07_interoperability.md#production-concerns) |
+| Distributed tracing (W3C `traceparent`) | OpenTelemetry Python SDK — `opentelemetry-instrumentation-fastapi` / `-httpx` — same OTel ecosystem | [Part 7 § Production concerns](07_interoperability.md#production-concerns) |
 
 ## Testing
 

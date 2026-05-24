@@ -130,15 +130,15 @@ The day-to-day implication: Python has no separate compile step you invoke. `pyt
 | Implementation | What it is | When it matters |
 | :--- | :--- | :--- |
 | **CPython** | Reference implementation in C. From python.org. | Default for ~99% of Python in the wild. C extensions (NumPy, pandas, cryptography, …) all target it. The GIL is a CPython detail. |
-| **PyPy** | Independent implementation with a tracing JIT. | Often 2–10× faster than CPython on pure-Python compute. Some C extensions are slower or unavailable. |
+| **PyPy** | Independent implementation with a tracing JIT. | ~3× average over CPython on long-running pure-Python compute (per the project's own benchmarks); workloads dominated by C extensions can be slower because the C-API shim (`cpyext`) adds overhead. |
 | **Jython** | Python on the JVM. Compiles to Java bytecode; native interop with Java classes. | When you must run inside a JVM application. Caveat: largely stuck on Python 2.x; Jython 3 has been in progress for years. |
 | **GraalPy** | Modern JVM-based Python on GraalVM. Python 3. | The 2026 answer for "Python + Java in one process." Run Python alongside Java, JS, Ruby on the same runtime. |
-| **IronPython** | Python on .NET. | If you live in the .NET world. Like Jython, .NET interop is the selling point. |
+| **IronPython** | Python on .NET. IronPython 3 reached Python-3 parity (3.4) and is actively maintained, unlike Jython. | If you live in the .NET world. .NET interop is the selling point; you can call .NET libraries from Python and embed Python in .NET apps. |
 | **MicroPython** | Stripped-down for microcontrollers. | Embedded / IoT. Subset of the stdlib. |
 
 Practical consequences of the split:
 
-- **The GIL is a CPython thing.** Jython and IronPython have no GIL (and never did). PyPy has one. GraalPy has one that's being phased out per PEP 703 work in the broader ecosystem. Most "Python concurrency" advice you read is implicitly CPython-specific.
+- **The GIL is a CPython thing.** Jython and IronPython have no GIL (and never did). PyPy has one. GraalPy has one too — kept for C-extension compatibility with CPython's C API; the project aims to drop it as CPython's PEP 703 (free-threading) rolls out and ecosystem packages catch up. Most "Python concurrency" advice you read is implicitly CPython-specific.
 - **Bytecode (`.pyc` files)** is CPython-specific. Other implementations have their own internal forms.
 - **C extensions** (`.so` / `.pyd` built against `Python.h`) target CPython directly. PyPy supports many via `cpyext` (often slower); Jython / IronPython generally do not.
 - **`int` arbitrary precision, the `str`/`bytes` split, generators, decorators** — all language-level. Every conforming implementation has them.
@@ -196,9 +196,9 @@ big = 10 ** 100
 print(big * big)                        # 200-digit number, no overflow
 ```
 
-> ☕ **Java parallel:** Java distinguishes `int` (32-bit), `long` (64-bit), and `BigInteger` (heap-allocated, arbitrary precision). Python has just `int`. CPython uses a fixed-size machine integer when the value fits in one machine word and transparently switches to an arbitrary-precision representation when it doesn't — you don't see the boundary. `BigInteger`-style code (`a.multiply(b)`) just becomes `a * b`.
+> ☕ **Java parallel:** Java distinguishes `int` (32-bit), `long` (64-bit), and `BigInteger` (heap-allocated, arbitrary precision). Python has just `int` — always a `PyLong` object internally, with a variable-length array of "digits" sized to fit the value. There is no primitive-int fast path in the interpreter; small values just use one internal digit, big values use more. `BigInteger`-style code (`a.multiply(b)`) just becomes `a * b`.
 
-The trade-off: arithmetic on huge ints is slower than fixed-width arithmetic. For tight numerical loops where you know a value fits in 64 bits, use NumPy arrays of `int64` ([Part 6 § Numerical and data libs](06_ecosystem_and_packaging.md#numerical-and-data-libs)) — that gets you machine-int speed plus vectorization. `sys.maxsize` exists but it's the **array-index** limit, NOT the int limit (which is unbounded).
+The trade-off: every Python int allocation has object overhead, and arithmetic on huge values scales with digit count. For tight numerical loops where you know a value fits in 64 bits, use NumPy arrays of `int64` ([Part 6 § Numerical and data libs](06_ecosystem_and_packaging.md#numerical-and-data-libs)) — that gets you machine-int speed plus vectorization. `sys.maxsize` exists but it's the `Py_ssize_t` maximum (platform-dependent — typically `2**63 - 1` on 64-bit systems), used for sizing things like list lengths; it is NOT a limit on `int` values.
 
 ### No `++` or `--`
 
