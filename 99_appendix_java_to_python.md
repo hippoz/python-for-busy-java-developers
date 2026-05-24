@@ -25,6 +25,7 @@ For full treatment, follow the link in each row.
 - [Validation, serialization, ORM](#validation-serialization-orm)
 - [Auth and security](#auth-and-security)
 - [HTTP and URLs](#http-and-urls)
+- [Streams and functional](#streams-and-functional)
 - [Testing](#testing)
 - [Tooling](#tooling)
 
@@ -209,6 +210,29 @@ For full treatment, follow the link in each row.
 | OkHttp retry/interceptor | `tenacity` decorator + `httpx`/`requests` event hooks | [Part 6 § http-production-behavior](06_ecosystem_and_packaging.md#http-production-behavior) |
 | `URI` / `URL` builder | `urllib.parse.urlencode` / `urljoin` / `urlparse` | [Part 5 § urllibparse](05_standard_library.md#urllibparse) |
 | Spring `WebClient` (reactive) | `httpx.AsyncClient` | [Part 6 § http-clients](06_ecosystem_and_packaging.md#http-clients) |
+
+## Streams and functional
+
+| Java | Python | See |
+|---|---|---|
+| `stream().map(f).toList()` | `[f(x) for x in xs]` or `list(map(f, xs))` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `stream().filter(p).toList()` | `[x for x in xs if p(x)]` or `list(filter(p, xs))` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `stream().reduce(0, Integer::sum)` | `sum(xs)` or `reduce(operator.add, xs, 0)` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `stream().sorted(comparing(f))` | `sorted(xs, key=f)` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `stream().min(comparing(f))` / `.max(...)` | `min(xs, key=f)` / `max(xs, key=f)` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `stream().mapToInt(f).sum()` | `sum(f(x) for x in xs)` (generator expression — lazy) | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `stream().distinct()` | `set(xs)` (unordered) / `list(dict.fromkeys(xs))` (ordered) | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `Collectors.groupingBy(f)` | `itertools.groupby(sorted(xs, key=f), key=f)` — sort first | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `Collectors.partitioningBy(p)` | `([x for x in xs if p(x)], [x for x in xs if not p(x)])` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `Collectors.joining(", ")` | `", ".join(str(x) for x in xs)` | [Part 5 § regex-and-strings](05_standard_library.md#regex-and-strings) |
+| `Optional<T>.map(f)` | `f(x) if x is not None else None` | [Part 1 § none-and-is](01_syntax_shock.md#none-and-is) |
+| `Optional<T>.orElse(d)` | `x if x is not None else d` | [Part 1 § none-and-is](01_syntax_shock.md#none-and-is) |
+| `Function.identity()` | `lambda x: x` | [Part 3 § functions-as-first-class-objects](03_pythonic_idioms.md#functions-as-first-class-objects) |
+| `Function.andThen(g)` | comprehension or generator pipeline — no built-in `compose` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| lambda for `Comparator` | `key=operator.itemgetter("x")` or `key=operator.attrgetter("x")` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `Stream.concat(a, b)` | `itertools.chain(a, b)` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `Stream.takeWhile(p)` / `.dropWhile(p)` | `itertools.takewhile(p, it)` / `itertools.dropwhile(p, it)` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
+| `BiFunction` partial application | `functools.partial(f, x)` | [Part 3 § functional-patterns](03_pythonic_idioms.md#functional-patterns) |
 
 ## Testing
 

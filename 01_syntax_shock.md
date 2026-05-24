@@ -28,6 +28,7 @@ Goal: read Python code without flinching. Cover what looks different, the few wo
 - [Walrus](#walrus)
 - [Exception handling](#exception-handling)
 - [Modules and imports](#modules-and-imports)
+- [Python-specific keywords](#python-specific-keywords)
 - [Key Takeaways](#key-takeaways)
 
 ---
@@ -615,6 +616,37 @@ Java developers think in terms of packages → classes → static imports. Pytho
 
 1. **Circular imports.** If `a.py` imports `b.py` and `b.py` imports `a.py`, you'll get partially-initialized module errors. Restructure so the shared code lives in a third module, or move the import inside a function.
 2. **Module-level side effects.** Code at the top of a module runs on import. A file that does `connect_to_db()` at import time will surprise you.
+
+## Python-specific keywords
+
+Reference table of keywords that surprise Java devs. Each links to the deep treatment.
+
+| Keyword | What surprises Java devs | Deep treatment |
+| :--- | :--- | :--- |
+| `pass` | Empty-body placeholder — Java uses `{}`. Required where syntax wants a body. | [§ Control flow](#control-flow) |
+| `elif` | One word, not `else if`. | [§ Control flow](#control-flow) |
+| `and`, `or`, `not` | Not `&&`, `\|\|`, `!`. Short-circuit. | [§ Control flow](#control-flow) |
+| `is`, `is not` | Identity comparison (≈ Java `==` on references). Reserve for `None` / sentinels. | [§ None and is](#none-and-is) |
+| `in`, `not in` | Membership test — Java needs `.contains()`. | [Part 3 § Iterable vs iterator](03_pythonic_idioms.md#iterable-vs-iterator) |
+| `assert` | Stripped by `python -O` — never for input validation. | [Part 3 § Advanced control flow](03_pythonic_idioms.md#advanced-control-flow) |
+| `del` | Remove a binding, list element, dict key, or attribute. | [Part 3 § Advanced control flow](03_pythonic_idioms.md#advanced-control-flow) |
+| `for ... else`, `while ... else` | `else` runs if the loop did NOT `break`. **No Java analog.** | [Part 3 § Advanced control flow](03_pythonic_idioms.md#advanced-control-flow) |
+| `with` | Like `try-with-resources` but for ANY context manager (locks, transactions, timing). | [Part 3 § Context managers](03_pythonic_idioms.md#context-managers) |
+| `lambda` | Anonymous single-expression function — familiar from Java 8+, but Python prefers `def` for non-trivial bodies. | [Part 3 § Functions as first-class objects](03_pythonic_idioms.md#functions-as-first-class-objects) |
+| `yield`, `yield from` | Turns the function into a generator. No Java keyword analog. | [Part 3 § Generators](03_pythonic_idioms.md#generators) |
+| `nonlocal` | Rebind an enclosing-function variable. Java lambdas can't — captured vars are effectively final. | [Part 3 § Scope and nonlocal](03_pythonic_idioms.md#scope-and-nonlocal) |
+| `global` | Rebind a module-level variable. Smell if you reach for it often. | [Part 3 § Scope and nonlocal](03_pythonic_idioms.md#scope-and-nonlocal) |
+| `async`, `await` | Coroutine declaration / pause-and-resume. | [Part 4 § Async and await](04_concurrency.md#async-and-await) |
+| `match`, `case` | Structural pattern matching (3.10+). NOT Java `switch`. | [§ Match](#match), [Part 3 § Match patterns](03_pythonic_idioms.md#match-patterns) |
+| `raise ... from ...` | Exception chaining — like Java `throw new X(msg, cause)`. | [§ Exception handling](#exception-handling) |
+| `except*` | Handle `ExceptionGroup` branches (🐍 3.11+). | [Part 4 § Exception groups](04_concurrency.md#exception-groups) |
+
+> ⚠️ **Top 3 surprises for a Java reader:**
+> (1) **`for / while ... else`** — `else` runs only if the loop completed without `break`. Read it as `nobreak:`.
+> (2) **`nonlocal`** — Java lambdas can't reassign captured variables; Python `nonlocal` can.
+> (3) **`is`** — identity, not value. Use ONLY for `None`, `True`, `False`, and explicit sentinels. `x is "hello"` triggers a `SyntaxWarning`.
+
+`break` and `continue` themselves work exactly like Java — they're not on this list. The Python twist is the `else` clause that can follow the loop, which interacts with `break`. See [Part 3 § Advanced control flow](03_pythonic_idioms.md#advanced-control-flow) for the `for/while ... else` deep treatment.
 
 ## Key Takeaways
 

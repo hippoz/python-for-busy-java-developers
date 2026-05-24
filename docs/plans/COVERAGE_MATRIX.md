@@ -185,6 +185,8 @@ Old files are deleted only after Phase 3 verifies this matrix accounts for every
 | Pass-by-value-of-reference explicit framing | `02#mutability` (within, Java-parallel callout) | User request via `ref/` Day 04 |
 | String interning / `is` on literals SyntaxWarning | `01#none-and-is` (within, pitfall callout) | User request via `ref/` Day 02 |
 | String methods catalog (`upper`/`lower`/`title`/`strip`/`startswith`/`removeprefix`…) | `05#regex-and-strings` (within) | User request via `ref/` Day 01 |
+| Functional patterns (`operator` module / `functools.reduce`+`partial` examples / Stream→Python map / `itertools` combinators / generator pipelines / Pythonic-FP framing) | `03#functional-patterns` | User request — honest gap in FP framing for Java/Streams audience |
+| Python-specific keywords cheat sheet (`pass`/`del`/`is`/`in`/`with`/`yield`/`nonlocal`/`global`/`elif`/`for-else`/`assert`/`match`/`raise from`/`except*`) | `01#python-specific-keywords` | User request — Java devs want one-page reference of "shocking" keywords |
 | Anti-pattern openers (Bean/Interface/AbsFactory/ThreadLocal/Cacheable/SpringScan) | embedded P2/P3/P4 | Peer device |
 | `async with` / `async for` / async ctx mgrs | `04#async-context-managers` | Q6 medium + peer |
 | Async file I/O (`aiofiles` / `to_thread`) | `04#async-file-io` | Peer |

@@ -19,6 +19,7 @@ Goal: stop writing Java-in-Python. Cover the language features that separate "Py
 - [Protocol](#protocol)
 - [Match patterns](#match-patterns)
 - [Functions as first-class objects](#functions-as-first-class-objects)
+- [Functional patterns](#functional-patterns)
 - [Scope and nonlocal](#scope-and-nonlocal)
 - [Advanced control flow](#advanced-control-flow)
 - [Introspection](#introspection)
@@ -692,6 +693,133 @@ list(map(lambda x: x*x, range(5)))     # works
 [x*x for x in range(5)]                # preferred
 ```
 
+## Functional patterns
+
+Python is multi-paradigm. Most code is procedural with OOP, but the functional building blocks are first-class. This section pulls together the pieces a Java/Streams developer reaches for — once you know they exist, you'll see them everywhere.
+
+### `operator` module
+
+For higher-order functions that need "get this key" / "get this attribute" / "call this method," reach for `operator` before reaching for a lambda:
+
+```python
+from operator import itemgetter, attrgetter, methodcaller
+
+users = [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]
+sorted(users, key=itemgetter("age"))               # sort by dict key
+sorted(users, key=itemgetter("city", "age"))       # multi-key sort (tuple form)
+
+class User:
+    def __init__(self, name, age):
+        self.name, self.age = name, age
+
+users = [User("Alice", 30), User("Bob", 25)]
+sorted(users, key=attrgetter("age"))               # sort by attribute
+
+list(map(methodcaller("upper"), ["alice", "bob"])) # call .upper() on each
+# >>> ['ALICE', 'BOB']
+```
+
+> 💡 **Pythonic:** `itemgetter("age")` is both faster and clearer than `lambda x: x["age"]`. Same for `attrgetter` and `methodcaller`. Reach for `operator` before reaching for `lambda` whenever the lambda body is just a getter or method call.
+
+### `functools.reduce`
+
+The Java `Stream.reduce()` analog. Less common in Python than in Java because comprehensions plus `sum`/`max`/`min`/`math.prod` cover most cases — but it's the right tool when no specialized built-in fits:
+
+```python
+from functools import reduce
+import operator
+import math
+
+total   = sum([1, 2, 3, 4])                              # 10  — clearer than reduce
+product = math.prod([1, 2, 3, 4])                        # 24  — also clearer
+longest = reduce(lambda a, b: a if len(a) >= len(b) else b,
+                 ["apple", "fig", "banana"])             # 'banana' — genuine reduce use
+acc     = reduce(operator.add, [1, 2, 3, 4], 100)        # 110, with initial value
+```
+
+Rule of thumb: try `sum`, `min`, `max`, `math.prod`, `any`, `all` first. Reach for `reduce` when the accumulator function is custom.
+
+### `functools.partial`
+
+Fix some arguments of a function, get a new function back:
+
+```python
+from functools import partial
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Pre-fill a logging call with level and component name
+debug_log = partial(logger.log, logging.DEBUG)
+debug_log("starting")                       # same as logger.log(logging.DEBUG, "starting")
+
+# Adapt a 3-arg function to a 1-arg interface
+def fetch(url, timeout, retries):
+    ...
+fetch_with_defaults = partial(fetch, timeout=5, retries=3)
+fetch_with_defaults("https://example.com")  # only need to pass url
+```
+
+> ☕ **Java parallel:** `partial(f, x)` ≈ a lambda capturing `x`. Less a "currying" tool than a clean way to adapt one signature to another at the call site — common as a callback that needs extra context.
+
+### Stream → Python idiom map
+
+| Java Streams | Python idiom |
+| :--- | :--- |
+| `stream().map(f).toList()` | `[f(x) for x in xs]` or `list(map(f, xs))` |
+| `stream().filter(p).toList()` | `[x for x in xs if p(x)]` or `list(filter(p, xs))` |
+| `stream().reduce(0, Integer::sum)` | `sum(xs)` (or `reduce(operator.add, xs, 0)`) |
+| `stream().sorted(comparing(...))` | `sorted(xs, key=...)` |
+| `stream().min(comparing(...))` | `min(xs, key=...)` |
+| `stream().mapToInt(f).sum()` | `sum(f(x) for x in xs)` (generator expression — lazy, no list) |
+| `stream().count()` | `sum(1 for _ in xs)` or `len(xs)` if it's a list |
+| `stream().distinct()` | `set(xs)` (loses order) or `list(dict.fromkeys(xs))` (preserves order) |
+| `Collectors.groupingBy(f)` | `itertools.groupby(sorted(xs, key=f), key=f)` ⚠ sort first |
+| `Collectors.partitioningBy(p)` | `([x for x in xs if p(x)], [x for x in xs if not p(x)])` |
+| `Collectors.joining(", ")` | `", ".join(str(x) for x in xs)` |
+| `Optional<T>.map(f)` | `f(x) if x is not None else None` |
+| `Optional<T>.orElse(d)` | `x if x is not None else d` |
+| `Function.andThen(g)` | comprehension/generator pipeline — no built-in `compose` |
+| `Function.identity()` | `lambda x: x` |
+
+### Generator pipelines
+
+Generators (see [Generators](#generators)) compose into **lazy** pipelines — values flow through stage by stage without ever building intermediate lists. This is the closest match to Java's `Stream` semantics:
+
+```python
+def words(file):
+    for line in file:
+        for w in line.split():
+            yield w
+
+def lengths(it):
+    for w in it:
+        yield len(w)
+
+# Lazy end-to-end: no list ever built
+with open("text.txt") as f:
+    total = sum(lengths(words(f)))
+```
+
+Each pipeline stage pulls one value through at a time. Memory use stays constant regardless of file size — the same property that makes Java `Stream` attractive.
+
+### `itertools` as combinators
+
+The `itertools` module ([Part 5 § Stdlib quick-wins](05_standard_library.md#stdlib-quick-wins)) is a functional toolkit for iterators. The Stream operations without a direct comprehension equivalent live here:
+
+| Combinator | Use |
+| :--- | :--- |
+| `chain(a, b, ...)` | concatenate iterables lazily |
+| `groupby(it, key)` | run-length encode by key (sort first!) |
+| `accumulate(it, fn)` | running totals / prefix folds |
+| `dropwhile(p, it)` / `takewhile(p, it)` | skip-while / take-while |
+| `islice(it, start, stop, step)` | slice that works on any iterator (not just lists) |
+| `product(a, b)` / `combinations(it, r)` / `permutations(it, r)` | combinatorics |
+| `zip_longest(...)` | zip that pads with a fill value instead of truncating |
+| `tee(it, n)` | duplicate an iterator into N independent iterators |
+
+> 💡 **Pythonic:** Pythonic functional code is **comprehensions + generators + small named functions + `operator` / `functools` / `itertools` helpers**. It is NOT deep currying, point-free style, or maximum compositionality. Python's syntax doesn't reward those, and reviewers won't either. Reach for FP when the data flow is the story; reach for procedural when state is.
+
 ## Scope and nonlocal
 
 Python has three scopes (plus built-ins): local, enclosing, global. A name lookup walks them in that order — LEGB (Local, Enclosing, Global, Built-in).
@@ -870,3 +998,4 @@ print(len(TrackedMeta.instances))      # >>> 2
 - Reach for `Sequence`/`Mapping`/`Iterable` over concrete `list`/`dict` in function signatures.
 - `match` is structural pattern matching — destructure, don't `switch`.
 - Reach for metaclasses only when decorators, `__init_subclass__`, or `Protocol` won't fit.
+- Pythonic FP = comprehensions + generators + `operator` / `functools` / `itertools` helpers. Not deep currying.
