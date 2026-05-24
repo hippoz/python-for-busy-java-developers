@@ -40,12 +40,12 @@ If you can avoid in-process interop, do. **Out-of-process boundaries (HTTP, gRPC
 | Streaming LLM tokens to a browser | **HTTP + SSE** (Server-Sent Events) | Native browser support, what OpenAI and Anthropic chat-completions APIs use |
 | Bidirectional streaming | **WebSocket** | Browser support, both directions |
 | Fire-and-forget / async fanout | **Message queue** (Kafka, RabbitMQ, Redis Streams) | Decouples producer from consumer; good for ML inference fanout |
-| Co-located JVM + Python, frequent calls | **Py4J** or **GraalPy** | In-process latency; only worth it if HTTP is genuinely the bottleneck |
+| Co-located JVM + Python, frequent calls | **Py4J** (local socket bridge — PySpark mechanism) or **GraalPy** (true in-process on GraalVM) | Lower latency than HTTP; only worth it if HTTP is genuinely the bottleneck. See [§ Tighter coupling](#tighter-coupling-local-ipc-and-in-process-bridges) for the socket-vs-in-process distinction. |
 | Python calling a C/C++ library | **`ctypes` / `cffi` / `pybind11`** | No network at all; FFI |
 | Browser-side Python (demos, notebooks) | **Pyodide** (Python on WebAssembly) | No server required |
 | Batch data exchange | **Parquet / Arrow files** | Columnar, language-agnostic, efficient |
 
-> 💡 **Pythonic:** Default to HTTP/REST. Move to gRPC when you have typed contracts and care about latency. Move to in-process (Py4J / GraalPy / FFI) only when measured boundary cost is genuinely your bottleneck. Most "we need tight integration" requirements turn out to be solvable with a well-designed REST API.
+> 💡 **Pythonic:** Default to HTTP/REST. Move to gRPC when you have typed contracts and care about streaming. Move to tighter coupling — local-socket bridges (Py4J) or true in-process (JPype / GraalPy / FFI) — only when measured boundary cost is genuinely your bottleneck. Most "we need tight integration" requirements turn out to be solvable with a well-designed REST API.
 
 ## Python and Java
 
@@ -293,7 +293,7 @@ The Python service stays needed for ingestion and re-embedding; queries can bypa
 
 ### 3. Streaming LLM responses
 
-Token-by-token output keeps latency feel low. Use **SSE** (covered above) — it's what every public LLM API uses, browsers support it natively, every backend language has a client.
+Token-by-token output keeps latency feel low. Use **SSE** (covered above) — what OpenAI and Anthropic chat-completions APIs use for streaming. Other providers vary (Gemini uses gRPC streaming, some use WebSocket), but SSE is the most common HTTP-friendly choice. Browsers support it natively; every backend language has a client.
 
 ### 4. Embedding model as a separate service
 
@@ -387,7 +387,7 @@ A handful of cross-language traps to know:
 - **`int` size at the boundary.** Python `int` is unbounded (see [P1 § Operators](01_syntax_shock.md#operators)); Java `long` is 64-bit; JavaScript numbers are IEEE 754 doubles (safe ints up to 2^53−1). A Python `id = 2**60` round-trips through JSON to JS as a corrupted float. Use **strings** for large IDs at language boundaries, or Protobuf `int64` (which JS clients receive as `BigInt` or string depending on the generator).
 - **String encoding at the boundary.** Python `str` is Unicode (see [P1 § Str vs bytes](01_syntax_shock.md#str-vs-bytes)). JSON over HTTP is UTF-8 by spec — fine. But if you write binary protocols by hand, declare the encoding explicitly. Don't assume Java's default `String.getBytes()` and Python's `.encode()` pick the same charset.
 - **Datetime serialization.** Python `datetime` ↔ Java `Instant`/`OffsetDateTime` ↔ JS `Date` all serialize differently. Pin a contract: ISO-8601 with explicit timezone offset (`2026-05-24T10:30:00+00:00`). Avoid naive datetimes at boundaries (see [P5 § Date and time parsing](05_standard_library.md#date-and-time-parsing)).
-- **GIL invisibility.** The GIL ([P4 § GIL](04_concurrency.md#gil)) is invisible to out-of-process callers — your Python service handles requests serially per-process; scale by adding workers (`uvicorn --workers N`) and load-balancing in front. In-process bridges (Py4J / GraalPy / embedded CPython) expose the GIL — concurrent calls from the host runtime still serialize through it.
+- **GIL invisibility.** The GIL ([P4 § GIL](04_concurrency.md#gil)) is invisible to out-of-process callers — your Python service handles requests serially per-process; scale by adding workers (`uvicorn --workers N`) and load-balancing in front. Tighter coupling exposes it: true in-process embeds (JPype, GraalPy, embedded CPython) hit it directly because the JVM/host thread becomes the Python thread; even local-socket bridges (Py4J) hit it because the Python side is still single CPython process.
 - **Process spawn cost.** Java / Node spawning Python as a subprocess costs ~50–200 ms cold-start. Fine for build steps and CLI tools; wrong for per-request hot paths. Run Python as a long-lived service instead.
 - **Pyodide is not "serverless production".** It's CPython in WASM running on the client. Several-MB download, slow startup, no access to many C extensions. Good for tools, notebooks, demos; almost never the right answer for transactional UI.
 - **Jython is not modern Python.** Don't pick it for new work in 2026. Jython 2.7 is the latest released version; Jython 3 has been in slow development for years. Use **GraalPy** for new JVM-embedded Python projects.
@@ -396,8 +396,8 @@ A handful of cross-language traps to know:
 ## Key Takeaways
 
 - Default to **out-of-process** (HTTP/REST, gRPC, message queue) for cross-language interop. Only reach for in-process bridges when measured boundary cost forces it.
-- For **Python ↔ Java** in-process work, use **GraalPy** (modern) or **Py4J** (Spark ecosystem). Avoid Jython for new work — stuck on Py2.
-- For **streaming LLM tokens to browsers**, use **SSE** — what every public LLM API does.
+- For **Python ↔ Java** tight coupling, distinguish **socket bridge** (Py4J — two processes, PySpark mechanism) from **true in-process** (JPype hosts JVM-in-Python; GraalPy hosts Python-in-JVM). Avoid Jython for new work — stuck on Py2.
+- For **streaming LLM tokens to browsers**, use **SSE** — what OpenAI and Anthropic chat-completions APIs use. Other providers vary.
 - For **Python ↔ C/C++**, `pybind11` is the modern default (C++ side); `ctypes` and `cffi` cover the C side.
 - **Pyodide** runs Python in the browser via WebAssembly — great for demos / notebooks / JupyterLite, rarely the right answer for production RAG.
 - **Pickle is Python-only and unsafe** across the network — JSON for text, Protobuf / Arrow / Parquet for binary.
