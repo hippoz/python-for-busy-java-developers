@@ -38,6 +38,9 @@ For full treatment, follow the link in each row.
 |---|---|---|
 | `String` | `str` | [Part 1 § str-vs-bytes](01_syntax_shock.md#str-vs-bytes) |
 | triple-quoted string literal | `"""..."""` / `'''...'''` | [Part 1 § str-vs-bytes](01_syntax_shock.md#str-vs-bytes) |
+| `// single-line comment` | `# single-line comment` | [Part 1 § comments-and-docstrings](01_syntax_shock.md#comments-and-docstrings) |
+| `/* block comment */` | no equivalent — stack multiple `# ...` lines | [Part 1 § comments-and-docstrings](01_syntax_shock.md#comments-and-docstrings) |
+| `/** Javadoc */` | docstring — `"""..."""` as the first statement of a def/class/module | [Part 1 § comments-and-docstrings](01_syntax_shock.md#comments-and-docstrings) |
 | `Math` | `math` module | [Part 5 § math-random-stats](05_standard_library.md#math-random-stats) |
 | `Math.pow(a, b)` | `a ** b` (built-in operator) | [Part 1 § operators](01_syntax_shock.md#operators) |
 | `Math.floorMod(a, b)` | `a % b` (Python `%` already sign-follows-divisor) | [Part 1 § operators](01_syntax_shock.md#operators) |

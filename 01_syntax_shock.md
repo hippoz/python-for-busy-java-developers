@@ -10,6 +10,7 @@ Goal: read Python code without flinching. Cover what looks different, the few wo
 
 - [Core differences](#core-differences)
 - [Typing basics](#typing-basics)
+- [Comments and docstrings](#comments-and-docstrings)
 - [Functions](#functions)
 - [Execution model](#execution-model)
 - [Entry point](#entry-point)
@@ -87,6 +88,40 @@ def add(a: int, b: int) -> int:
 ```
 
 > 💡 **Pythonic:** Hints are checked by a separate tool, not by the interpreter. `add("x", "y")` runs without complaint. See [Part 3 § Type hints](03_pythonic_idioms.md#type-hints) for the full story.
+
+## Comments and docstrings
+
+Python has **one** comment syntax — `#` to end of line. There is no `/* ... */` block-comment form:
+
+```python
+# single-line comment
+
+x = 1   # inline comment after code
+
+# "Block comments" are just multiple single-line comments stacked.
+# Each line needs its own #.
+# Editors usually have a key to toggle this for a selection.
+```
+
+**Docstrings** are NOT comments. They're triple-quoted string literals that appear as the first statement of a `def` / `class` / module body. The interpreter binds them to `__doc__` and tools (`help()`, Sphinx, IDE hover, etc.) pick them up:
+
+```python
+def withdraw(balance: float, amount: float) -> float:
+    """Subtract amount from balance.
+
+    Raises ValueError if amount exceeds balance.
+    """
+    if amount > balance:
+        raise ValueError("Insufficient funds")
+    return balance - amount
+
+print(withdraw.__doc__)        # the docstring as a str
+help(withdraw)                  # rendered docstring + signature
+```
+
+> ☕ **Java parallel:** `#` → `//`. No direct equivalent of `/* ... */` — use stacked `#` lines instead. Docstrings (`""" ... """`) are the Python analog of `/** ... */` Javadoc — same role (API documentation, picked up by tooling), different mechanism (real string objects attached to the function/class/module).
+
+> ⚠️ **Pitfall:** You'll see triple-quoted strings used as comment-like blocks in the middle of functions — `"""this is a fake comment"""` on its own line. Technically that's an expression statement whose value (a `str`) is discarded; the interpreter doesn't care, but it's not a real comment and linters flag it. Use `#` for real comments. Triple-quoted strings are for docstrings (first statement of a `def`/`class`/module) and multi-line string values, not as scratch comments.
 
 ## Functions
 

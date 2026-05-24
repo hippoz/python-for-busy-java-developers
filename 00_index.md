@@ -62,6 +62,7 @@ Alphabetical. Sub-bullets indicate related/grouped topics. Click through to anch
 - **Class attr vs instance attr** — [P2 § Class vs instance attributes](02_java_idiom_translation.md#class-vs-instance-attributes)
 - **`@classmethod` / `@staticmethod`** — [P2 § Class and static methods](02_java_idiom_translation.md#class-and-static-methods)
 - **Collections — built-ins (`dict`/`set`/`list`/`tuple`/`deque`)** — [P2 § Collections mapping](02_java_idiom_translation.md#collections-mapping)
+- **Comments and docstrings (`#` syntax, no `/* */`, `"""..."""` for docs)** — [P1 § Comments and docstrings](01_syntax_shock.md#comments-and-docstrings)
 - **`collections` module (Counter/defaultdict/deque)** — [P5 § Collections module](05_standard_library.md#collections-module)
 - **`complex`** — [P1 § Complex](01_syntax_shock.md#complex)
 - **Comprehensions (list/dict/set/generator)** — [P3 § Comprehensions](03_pythonic_idioms.md#comprehensions)
