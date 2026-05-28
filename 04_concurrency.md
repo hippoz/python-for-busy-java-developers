@@ -259,7 +259,7 @@ with lock:
     ...
 ```
 
-> ☕ Closest to `synchronized` or a non-reentrant `Lock`.
+> ☕ **Java parallel:** No direct counterpart — Java's `synchronized` and `ReentrantLock` are both reentrant. The closest equivalent is a `Semaphore(1)` used as a non-reentrant binary lock. See the next subsection for why Python's default differs.
 
 ### `RLock`
 

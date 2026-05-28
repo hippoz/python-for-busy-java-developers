@@ -440,6 +440,8 @@ print(list(zipped))               # >>> [(1, 4), (2, 5), (3, 6)]
 Wrap in `list()` to materialise (the iterator is single-use — once exhausted it stays empty). Most of the time you don't materialise; you iterate directly and destructure each tuple:
 
 ```python
+x = [1, 2, 3]
+y = [4, 5, 6]
 for a, b in zip(x, y):
     print(a, b)
 # >>> 1 4
@@ -542,7 +544,7 @@ print(lyrics)
 # >>> Never gonna give you up, Never gonna let you down, Never gonna run around and desert you.
 ```
 
-Unlike a triple-quoted string, this produces a single logical line — none of the source-code newlines or leading-space indentation ends up in the value. Use this for long error messages, SQL fragments, or URLs you want to keep readable in code without affecting runtime content. Use triple-quoted strings when you genuinely want every newline and space preserved (SQL with formatting, docstrings, templates). Java 15+'s text blocks (`"""..."""`) cover roughly the same ground as Python's triple-quoted form — but Java has no parse-time implicit-concatenation equivalent; the JVM idiom is runtime `+` or `String.join`.
+Unlike a triple-quoted string, this produces a single logical line — none of the source-code newlines or leading-space indentation ends up in the value. Use this for long error messages, SQL fragments, or URLs you want to keep readable in code without affecting runtime content. Use triple-quoted strings when you genuinely want every newline and space preserved (SQL with formatting, docstrings, templates). Java 15+'s text blocks (`"""..."""`) cover roughly the same ground as Python's triple-quoted form — but Java has no no-operator adjacent-literal equivalent: the JVM uses `+` (folded at compile time when both sides are constant literals) or `String.join`.
 
 > ⚠️ **Pitfall:** Implicit concatenation joins only **literal** strings, not variables — `name "suffix"` is a `SyntaxError`. The classic real-world bite is a list of strings with a missing comma: `["foo", "bar" "baz"]` silently becomes `["foo", "barbaz"]` because `"bar" "baz"` merged into one literal. Linters (`ruff` rule `ISC001`, `pylint` `implicit-str-concat`) catch this.
 
