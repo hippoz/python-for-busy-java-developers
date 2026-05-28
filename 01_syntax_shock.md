@@ -427,18 +427,27 @@ The `_` is the wildcard catch-all (no equivalent to `default:` keyword).
 
 A handful of built-in functions show up in almost every Python codebase. They work on any iterable.
 
-`zip(a, b, ...)` pairs up elements:
+`zip(a, b, ...)` pairs up elements from two or more iterables, producing a lazy iterator of tuples:
 
 ```python
 x = [1, 2, 3]
 y = [4, 5, 6]
 
+zipped = zip(x, y)
+print(list(zipped))               # >>> [(1, 4), (2, 5), (3, 6)]
+```
+
+Wrap in `list()` to materialise (the iterator is single-use — once exhausted it stays empty). Most of the time you don't materialise; you iterate directly and destructure each tuple:
+
+```python
 for a, b in zip(x, y):
     print(a, b)
 # >>> 1 4
 # >>> 2 5
 # >>> 3 6
 ```
+
+By default `zip` **stops at the shortest** input, silently dropping trailing items from longer iterables. Use `zip(x, y, strict=True)` (3.10+) to raise `ValueError` on length mismatch, or `itertools.zip_longest(...)` to pad with a fill value.
 
 `any(it)` and `all(it)` short-circuit boolean reductions:
 
