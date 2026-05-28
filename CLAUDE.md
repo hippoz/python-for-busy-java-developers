@@ -70,9 +70,12 @@ Reuse the same session-id across rounds for continuity; compress `session.md` be
 - **"Every public LLM API uses SSE" is false.** OpenAI and Anthropic chat-completions APIs use SSE for streaming. Gemini uses gRPC streaming. Others vary. Narrow these claims. (Round 10–11.)
 - **Stale-text-after-rename:** when renaming a section (e.g., Sidecar → Python-as-service), `grep -r <old-term>` across all files including `00_index.md`, `docs/plans/COVERAGE_MATRIX.md`, `99_appendix_java_to_python.md`, and Key Takeaways. Each post-Part-7-rename round caught 2-5 lingering refs in places I'd forgotten. (Rounds 11, 13, 14.)
 - **Converge loops take more rounds than expected.** Part 7 needed 7 review rounds to land clean — each fix can introduce or reveal adjacent stale text. Always run a final cross-file `grep` after a significant rename, and budget for multiple verification rounds on non-trivial additions.
+- **Backticks do NOT protect `|` inside markdown table cells.** GitHub's table parser splits on every unescaped `|` regardless of code-span context, so `` `T | None` `` in a cell truncates mid-word. Either escape (`` `T \| None` ``) or use a pipe-free synonym (`Optional[T]`). Caught when the rendered Mono row chopped at "`Awaitable[T".
+- **"Java" vs "JVM" precision.** `+`, `synchronized`, and lambdas are **Java language** features; the JVM has bytecode (`invokedynamic`, `makeConcatWithConstants`, `MONITORENTER`) that those compile to. Don't say "the JVM uses `+`" — say "Java uses `+`". Mixing the layers is a tell that you don't understand the stack. (Round 22.)
+- **"Returns a new object" is too strong for Python sequence ops.** `a + b` and `a * n` do **not mutate** their operands, but for immutable sequences Python may reuse an existing object as an implementation detail. Say "doesn't mutate operands" and explicitly disclaim object-identity guarantees. (Round 21.)
 
 ## Out of scope for this repo
 
 - No source code, no Python interpreter required to build.
-- No CI — review is gate-by-peer-review, not gate-by-tests.
-- No `requirements.txt` / `pyproject.toml` — this is prose only.
+- Review is gate-by-peer-review, not gate-by-tests. CI exists (`.github/workflows/docs.yml`) but only builds and publishes the MkDocs site to GitHub Pages — it doesn't validate doc content correctness.
+- No `requirements.txt` / `pyproject.toml` — this is prose only. Doc-site build deps are pinned inline in the workflow.
