@@ -124,6 +124,25 @@ print(type({}))                     # >>> <class 'dict'>
 print(type(set()))                  # >>> <class 'set'>
 ```
 
+**Python has no fixed-size arrays.** Where Java reaches for `int[] xs = new int[10]`, Python reaches for `list`. A `list` is the resizable-array workhorse — exactly the role `ArrayList` / `Vector` play in Java, with a friendlier API and language-level syntax (`[1, 2, 3]`). If you genuinely need a homogeneous, memory-compact, fixed-element-type array (rare in everyday Python), the stdlib has `array.array("i", ...)`; the numerical ecosystem has `numpy.ndarray` (see [Part 6 § Numerical and data libs](06_ecosystem_and_packaging.md#numerical-and-data-libs)). For everything else, `list` is the answer.
+
+**`+` and `*` are overloaded on sequences** — concatenation and repetition, not arithmetic. The overload works on `list`, `tuple`, `str`, `bytes`, and `bytearray`:
+
+```python
+print([1, 2] + [3, 4, 5])               # >>> [1, 2, 3, 4, 5]
+print([1, 2] * 3)                       # >>> [1, 2, 1, 2, 1, 2]
+
+my_name = "Josiah"
+print(my_name + my_name)                # >>> JosiahJosiah
+print(my_name * 7)                      # >>> JosiahJosiahJosiahJosiahJosiahJosiahJosiah
+
+print((1, 2) + (3,))                    # >>> (1, 2, 3)    — tuple concat returns a new tuple
+```
+
+Strings work because a Python `str` is itself a sequence — you can index it (`my_name[0]`), slice it (`my_name[1:4]`), iterate over it, and ask its length — all the operations `list` and `tuple` support. See [Part 1 § Str vs bytes](01_syntax_shock.md#str-vs-bytes) for the full story. Both operators always return a **new** object; the operands are unchanged. For in-place growth on a `list`, use `list.append`, `list.extend`, or `+=` (which mutates the existing list). Java has no equivalent overloading: `int[] a + int[] b` is a compile error, and `String` concatenation with `+` is the one and only operator overload the JVM ships with.
+
+> ⚠️ **Pitfall:** `[[]] * 3` does **not** give three independent inner lists — it gives three references to the **same** inner list. `outer[0].append("x")` will then change all three. For independent inner lists, build with a comprehension: `[[] for _ in range(3)]`. The trap applies to any `*` repetition of a sequence containing mutable elements.
+
 ## Tuple
 
 A tuple is like a list, but **immutable** — and (when its elements are also hashable) that lets it be used as a dict key or set element. It also signals "fixed-shape record" rather than "growable sequence."

@@ -9,6 +9,7 @@ Goal: read Python code without flinching. Cover what looks different, the few wo
 ## Table of Contents
 
 - [Core differences](#core-differences)
+- [Variables and the object model](#variables-and-the-object-model)
 - [Typing basics](#typing-basics)
 - [Comments and docstrings](#comments-and-docstrings)
 - [Functions](#functions)
@@ -63,6 +64,26 @@ print(a + b)
 ```
 
 The mindset shift this section sets up is small but real: less ceremony, indentation matters, and the file *is* the entry point unless you say otherwise.
+
+## Variables and the object model
+
+A variable in Python is a **label** bound to an object on the heap. Not a typed slot, not a box holding a value — just a name with a pointer.
+
+```python
+x = 5
+y = x                  # y is another name pointing at the same int
+print(x is y)          # >>> True   (same object — see § None and is for what `is` checks)
+```
+
+Three consequences a Java dev should internalise early:
+
+1. **Everything is an object** — `int`, `bool`, `float`, `None`, functions, classes, modules, all of it. There are no primitive types like Java's `int` / `long` / `boolean`. `True` is a singleton instance of `bool`; `42` is a real `int` object you can call methods on (`(42).bit_length()` returns `6`).
+
+2. **Assignment never copies.** `b = a` binds `b` to whatever object `a` is already pointing at. For immutable objects (`int`, `str`, `tuple`, `frozenset`) you can't tell the difference; for mutable objects (`list`, `dict`, `set`) you can — modifying through one name shows through the other. Deep treatment in [Part 2 § Mutability](02_java_idiom_translation.md#mutability).
+
+3. **Garbage collection is automatic** — just like the JVM. CPython uses reference counting plus a cycle collector for unreachable reference cycles; there is no `free()` or `delete` to call. (`del x` exists, but it only unbinds the name `x` — the object lives as long as anything else still references it.)
+
+> ☕ **Java parallel:** Java splits the world into primitives (`int`, `boolean`, …) that live by value and reference types (objects, including boxed `Integer`) that live on the heap. Python skips that split — there is only the reference model. The good news for Java devs: this is the model you already use for every non-primitive in Java. The new part is that it applies to *everything*, including numbers and booleans.
 
 ## Typing basics
 
@@ -338,6 +359,22 @@ if value is None:
 
 The Java intuition `.equals()` vs `==` carries over: `is` is the reference-equality `==`; Python's `==` is the `.equals()` you actually want most of the time.
 
+**`id()` is what `is` actually compares.** `a is b` is equivalent to `id(a) == id(b)`. `id()` returns an integer that uniquely identifies an object for its lifetime — useful for tracing aliasing and debugging:
+
+```python
+a = "I love to learn"
+print(id(a))                    # >>> 4402585072  (your number will differ)
+
+b = a
+print(id(b) == id(a))           # >>> True       (same object, b is just an alias)
+
+c = [1, 2]
+d = [1, 2]
+print(id(c) == id(d))           # >>> False      (different objects, equal contents)
+```
+
+In CPython, `id()` happens to return the object's memory address — but that's a CPython implementation detail, not a language guarantee. PyPy, Jython, and GraalPy return some unique opaque integer that is *not* an address. Treat the value as an identifier valid only for the object's lifetime: once an object is garbage-collected, the same `id()` can be reused for a different object. Java has no equivalent — the JVM deliberately hides object addresses (`System.identityHashCode(o)` is the closest thing, but it's a hash, not an identity).
+
 > ⚠️ **Pitfall:** Don't write `x is 3` or `x is "hello"`. CPython interns small ints and short string literals, so it may *appear* to work — but `is` checks identity, not value, so the behavior depends on interpreter internals. Python 3.8+ raises a `SyntaxWarning` for literals after `is`. Reserve `is` for `None`, `True`, `False`, and explicit sentinels; use `==` for everything else.
 
 ## Truthiness
@@ -478,6 +515,27 @@ WHERE active = true
 ```
 
 The leading `\` after the opening `"""` suppresses the first newline so the string starts at `SELECT`. Triple-quoted strings are also the standard form for docstrings (the string immediately following a `def` / `class`).
+
+**Breaking a long string across lines without newlines or indentation in the value.** Adjacent string literals are concatenated by the parser — no `+` operator needed:
+
+```python
+words = "desert" "you"
+print(words)                       # >>> desertyou
+```
+
+To span lines, wrap the literals in parentheses (implied line continuation works inside `()`, `[]`, and `{}`):
+
+```python
+lyrics = ("Never gonna give you up, "
+          "Never gonna let you down, "
+          "Never gonna run around and desert you.")
+print(lyrics)
+# >>> Never gonna give you up, Never gonna let you down, Never gonna run around and desert you.
+```
+
+Unlike a triple-quoted string, this produces a single logical line — none of the source-code newlines or leading-space indentation ends up in the value. Use this for long error messages, SQL fragments, or URLs you want to keep readable in code without affecting runtime content. Use triple-quoted strings when you genuinely want every newline and space preserved (SQL with formatting, docstrings, templates). Java 15+'s text blocks (`"""..."""`) cover roughly the same ground as Python's triple-quoted form — but Java has no parse-time implicit-concatenation equivalent; the JVM idiom is runtime `+` or `String.join`.
+
+> ⚠️ **Pitfall:** Implicit concatenation joins only **literal** strings, not variables — `name "suffix"` is a `SyntaxError`. The classic real-world bite is a list of strings with a missing comma: `["foo", "bar" "baz"]` silently becomes `["foo", "barbaz"]` because `"bar" "baz"` merged into one literal. Linters (`ruff` rule `ISC001`, `pylint` `implicit-str-concat`) catch this.
 
 **Encode (`str` → `bytes`):**
 
